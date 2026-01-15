@@ -78,13 +78,25 @@ async def test_services_register_and_cleanup():
     with patch("custom_components.ectocontrol_modbus_controller.dr.async_get") as mock_get_dr:
         mock_get_dr.return_value = FakeDeviceRegistry()
 
-        # Mock the BoilerGateway
-        with patch("custom_components.ectocontrol_modbus_controller.BoilerGateway") as mock_gateway_class, \
+        # Mock the device_router.create_device_gateway
+        with patch("custom_components.ectocontrol_modbus_controller.device_router.create_device_gateway") as mock_create_gateway, \
              patch("custom_components.ectocontrol_modbus_controller.BoilerDataUpdateCoordinator", return_value=fake_coordinator):
             mock_protocol = MagicMock()
             mock_protocol.connect = AsyncMock(return_value=True)
             mock_protocol.disconnect = AsyncMock(return_value=True)
-            
+            # Make read_registers an async function that returns valid device info
+            async def fake_read_registers(slave_id, addr, count, timeout=None):
+                # Return valid boiler device type (0x14) with UID in valid range
+                if addr == 0x0000 and count >= 4:
+                    return [
+                        0x0000,  # Reserved
+                        0x8ABC,  # UID high 16 bits
+                        0xDE00,  # UID low 8 bits (0xDE in MSB)
+                        0x1404,  # Device type 0x14, channel count 4
+                    ]
+                return [0] * count
+            mock_protocol.read_registers = fake_read_registers
+
             # Mock the manager's get_protocol and release_protocol methods
             manager.get_protocol = AsyncMock(return_value=mock_protocol)
             manager.release_protocol = AsyncMock(return_value=True)
@@ -94,7 +106,10 @@ async def test_services_register_and_cleanup():
             mock_gateway.device_uid = 0x8ABCDEF  # Must have UID for setup to succeed
             mock_gateway.get_device_uid_hex = MagicMock(return_value="8abcdef")
             mock_gateway.read_device_info = AsyncMock(return_value=True)
-            mock_gateway_class.return_value = mock_gateway
+
+            # Mock create_device_gateway to return the mock gateway
+            mock_create = AsyncMock(return_value=mock_gateway)
+            mock_create_gateway.return_value = mock_create
 
             ok = await async_setup_entry(hass, entry)
             assert ok is True
