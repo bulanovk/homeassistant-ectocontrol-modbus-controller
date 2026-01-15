@@ -1,6 +1,7 @@
 """Tests for __init__.py service handlers and edge cases."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+import importlib
 from custom_components.ectocontrol_modbus_controller.const import DOMAIN
 
 
@@ -54,12 +55,24 @@ class FakeProtocol:
     async def disconnect(self):
         pass
 
-    async def read_registers(self, addr, count):
+    async def read_registers(self, addr, count, timeout=None):
+        # Return valid boiler device type (0x14) with UID in valid range
+        if addr == 0x0000 and count >= 4:
+            return [
+                0x0000,  # Reserved
+                0x8ABC,  # UID high 16 bits
+                0xDE00,  # UID low 8 bits (0xDE in MSB)
+                0x1404,  # Device type 0x14, channel count 4
+            ]
         return [0] * count
 
 
-class FakeGateway:
+# Import the real class to inherit from it
+from custom_components.ectocontrol_modbus_controller.boiler_gateway import BoilerGateway
+
+class FakeGateway(BoilerGateway):
     def __init__(self, protocol, slave_id):
+        # Skip parent init to avoid protocol connection requirements
         self.protocol = protocol
         self.slave_id = slave_id
         self.cache = {}
@@ -137,8 +150,6 @@ async def test_async_setup_entry_with_none():
 @pytest.mark.asyncio
 async def test_async_setup_entry_creates_components():
     """Test async_setup_entry creates protocol, gateway, coordinator."""
-    from custom_components.ectocontrol_modbus_controller import async_setup_entry
-
     hass = MagicMock()
     hass.data = {DOMAIN: {}}
     hass.config = FakeConfig()
@@ -150,15 +161,21 @@ async def test_async_setup_entry_creates_components():
     manager = ModbusProtocolManager()
     hass.data[DOMAIN]["protocol_manager"] = manager
 
+    # Create fake gateway instance
+    fake_gateway = FakeGateway(None, 1)
+
     with patch("custom_components.ectocontrol_modbus_controller.dr.async_get") as mock_get_dr, \
-         patch("custom_components.ectocontrol_modbus_controller.BoilerGateway") as MockGateway, \
+         patch("custom_components.ectocontrol_modbus_controller.create_device_gateway", AsyncMock(return_value=fake_gateway)), \
          patch("custom_components.ectocontrol_modbus_controller.BoilerDataUpdateCoordinator") as MockCoord:
+
+        # Import after patching
+        from custom_components.ectocontrol_modbus_controller import async_setup_entry
 
         mock_get_dr.return_value = FakeDeviceRegistry()
         fake_protocol = FakeProtocol()
         # Mock the manager's get_protocol method
         manager.get_protocol = AsyncMock(return_value=fake_protocol)
-        MockGateway.return_value = FakeGateway(fake_protocol, 1)
+
         mock_coord = AsyncMock(spec=FakeCoordinator)
         MockCoord.return_value = mock_coord
 
@@ -174,8 +191,6 @@ async def test_async_setup_entry_creates_components():
 @pytest.mark.asyncio
 async def test_async_setup_entry_initial_refresh_exception():
     """Test async_setup_entry handles initial refresh exception."""
-    from custom_components.ectocontrol_modbus_controller import async_setup_entry
-
     hass = MagicMock()
     hass.data = {DOMAIN: {}}
     hass.config = FakeConfig()
@@ -187,15 +202,21 @@ async def test_async_setup_entry_initial_refresh_exception():
     manager = ModbusProtocolManager()
     hass.data[DOMAIN]["protocol_manager"] = manager
 
+    # Create fake gateway instance
+    fake_gateway = FakeGateway(None, 1)
+
     with patch("custom_components.ectocontrol_modbus_controller.dr.async_get") as mock_get_dr, \
-         patch("custom_components.ectocontrol_modbus_controller.BoilerGateway") as MockGateway, \
+         patch("custom_components.ectocontrol_modbus_controller.create_device_gateway", AsyncMock(return_value=fake_gateway)), \
          patch("custom_components.ectocontrol_modbus_controller.BoilerDataUpdateCoordinator") as MockCoord:
+
+        # Import after patching
+        from custom_components.ectocontrol_modbus_controller import async_setup_entry
 
         mock_get_dr.return_value = FakeDeviceRegistry()
         fake_protocol = FakeProtocol()
         # Mock the manager's get_protocol method
         manager.get_protocol = AsyncMock(return_value=fake_protocol)
-        MockGateway.return_value = FakeGateway(fake_protocol, 1)
+
         mock_coord = AsyncMock(spec=FakeCoordinator)
         mock_coord.async_config_entry_first_refresh.side_effect = Exception("Test error")
         MockCoord.return_value = mock_coord
@@ -208,8 +229,6 @@ async def test_async_setup_entry_initial_refresh_exception():
 @pytest.mark.asyncio
 async def test_service_handler_single_entry():
     """Test service handler with single entry (uses implicit entry_id)."""
-    from custom_components.ectocontrol_modbus_controller import async_setup_entry
-
     hass = MagicMock()
     hass.data = {DOMAIN: {}}
     hass.config = FakeConfig()
@@ -221,22 +240,20 @@ async def test_service_handler_single_entry():
     manager = ModbusProtocolManager()
     hass.data[DOMAIN]["protocol_manager"] = manager
 
+    # Create fake gateway instance with mocked reboot_adapter method
+    fake_gateway = FakeGateway(None, 1)
+    fake_gateway.reboot_adapter = AsyncMock()
+
     with patch("custom_components.ectocontrol_modbus_controller.dr.async_get") as mock_get_dr, \
-         patch("custom_components.ectocontrol_modbus_controller.BoilerGateway") as MockGateway, \
+         patch("custom_components.ectocontrol_modbus_controller.create_device_gateway", AsyncMock(return_value=fake_gateway)), \
          patch("custom_components.ectocontrol_modbus_controller.BoilerDataUpdateCoordinator") as MockCoord:
+
+        # Import after patching
+        from custom_components.ectocontrol_modbus_controller import async_setup_entry
 
         fake_protocol = AsyncMock(spec=FakeProtocol)
         # Mock the manager's get_protocol method (must accept kwargs)
         manager.get_protocol = AsyncMock(side_effect=lambda **kwargs: fake_protocol)
-
-        fake_gateway = MagicMock()
-        fake_gateway.protocol = fake_protocol
-        fake_gateway.reboot_adapter = AsyncMock()
-        fake_gateway.reset_boiler_errors = AsyncMock()
-        fake_gateway.device_uid = 0x8ABCDEF  # Must have UID for setup to succeed
-        fake_gateway.get_device_uid_hex = MagicMock(return_value="8abcdef")
-        fake_gateway.read_device_info = AsyncMock(return_value=True)
-        MockGateway.return_value = fake_gateway
 
         mock_coord = AsyncMock(spec=FakeCoordinator)
         MockCoord.return_value = mock_coord
@@ -245,7 +262,7 @@ async def test_service_handler_single_entry():
 
         setup_result = await async_setup_entry(hass, entry)
         assert setup_result is True, f"Setup failed: {setup_result}"
-        
+
         # Verify entry was created
         assert entry.entry_id in hass.data[DOMAIN], f"Entry {entry.entry_id} not found in {list(hass.data[DOMAIN].keys())}"
 
@@ -260,7 +277,7 @@ async def test_service_handler_single_entry():
             if tup[1] == "reboot_adapter":
                 service_tuple = tup
                 break
-        
+
         assert service_tuple is not None, "reboot_adapter service not found"
         reboot_handler = service_tuple[2]
 
@@ -275,7 +292,7 @@ async def test_service_handler_single_entry():
         # The gateway in hass.data should be the same as our fake_gateway
         gateway_in_data = hass.data[DOMAIN][entry.entry_id]["gateway"]
         assert gateway_in_data is fake_gateway, "Gateway mismatch!"
-        fake_gateway.reboot_adapter.assert_called()
+        fake_gateway.reboot_adapter.assert_called_once()
 
 
 @pytest.mark.asyncio

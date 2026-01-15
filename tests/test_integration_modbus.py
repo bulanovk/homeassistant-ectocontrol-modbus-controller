@@ -62,6 +62,17 @@ class FakeRtuMaster:
             # We'll return a deterministic pattern so tests can assert values
             count = quantity_or_value
             base = address
+
+            # Special handling for device info registers (0x0000-0x0003)
+            if address == 0x0000 and count >= 4:
+                # Return valid boiler device type (0x14) with UID in valid range
+                return [
+                    0x0000,  # Reserved
+                    0x8ABC,  # UID high 16 bits
+                    0xDE00,  # UID low 8 bits (0xDE in MSB)
+                    0x1404,  # Device type 0x14, channel count 4
+                ]
+
             return [base + i for i in range(count)]
         if function_code in (6, 16):
             # single or multiple writes

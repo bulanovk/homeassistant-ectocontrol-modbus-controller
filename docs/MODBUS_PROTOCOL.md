@@ -385,6 +385,152 @@ elif status[0] == 1:
 
 ---
 
+### 3.10 Contact Sensor Splitter Registers
+
+**Device Type:** 0x59 (10-channel Contact Sensor Splitter)
+
+**Register Structure:** Bitfield-based channel states
+
+**Description:**
+The Contact Sensor Splitter is a device that monitors up to 10 independent contact inputs (door/window sensors, motion detectors, etc.) and reports their states via Modbus. Each channel can be in one of two states: closed (contact made) or open (contact broken).
+
+#### Register Map
+
+| Address | Name | Type | Access | Description |
+|---------|------|------|--------|-------------|
+| 0x0010 | Channels 1-8 | u16 | RO | Bitfield for channels 1-8 |
+| 0x0011 | Channels 9-10 | u16 | RO | Bitfield for channels 9-10 |
+
+#### Bitfield Structure
+
+**Register 0x0010: Channels 1-8**
+
+| Bit | Channel | Description |
+|-----|---------|-------------|
+| 0 | Channel 1 | 0 = Open, 1 = Closed |
+| 1 | Channel 2 | 0 = Open, 1 = Closed |
+| 2 | Channel 3 | 0 = Open, 1 = Closed |
+| 3 | Channel 4 | 0 = Open, 1 = Closed |
+| 4 | Channel 5 | 0 = Open, 1 = Closed |
+| 5 | Channel 6 | 0 = Open, 1 = Closed |
+| 6 | Channel 7 | 0 = Open, 1 = Closed |
+| 7 | Channel 8 | 0 = Open, 1 = Closed |
+
+**Register 0x0011: Channels 9-10**
+
+| Bit | Channel | Description |
+|-----|---------|-------------|
+| 0 | Channel 9 | 0 = Open, 1 = Closed |
+| 1 | Channel 10 | 0 = Open, 1 = Closed |
+
+#### Dynamic Polling
+
+The number of registers to read depends on the device's channel count:
+
+```python
+if channel_count <= 8:
+    # Read only register 0x0010
+    regs = await protocol.read_registers(slave_id, 0x0010, 1)
+else:
+    # Read both registers 0x0010-0x0011
+    regs = await protocol.read_registers(slave_id, 0x0010, 2)
+```
+
+#### Bit Extraction Examples
+
+**Extract Channel 1 state:**
+```python
+reg_0x0010 = 0x0005  # Binary: 0000000000000101
+channel_1_state = (reg_0x0010 >> 0) & 0x01  # = 1 (Closed)
+channel_2_state = (reg_0x0010 >> 1) & 0x01  # = 0 (Open)
+channel_3_state = (reg_0x0010 >> 2) & 0x01  # = 1 (Closed)
+```
+
+**Extract Channel 9 state:**
+```python
+reg_0x0011 = 0x0003  # Binary: 0000000000000011
+channel_9_state = (reg_0x0011 >> 0) & 0x01  # = 1 (Closed)
+channel_10_state = (reg_0x0011 >> 1) & 0x01  # = 1 (Closed)
+```
+
+#### Reading Algorithm
+
+```python
+def get_channel_state(channel, channel_count, cache):
+    """Get the state of a specific channel."""
+    
+    # Validate channel number
+    if channel < 1 or channel > 10:
+        raise ValueError("Channel must be 1-10")
+    
+    # Check if channel exists on this device
+    if channel > channel_count:
+        return None
+    
+    if channel <= 8:
+        # Extract from register 0x0010
+        reg_0x0010 = cache.get(0x0010)
+        if reg_0x0010 is None:
+            return None
+        bit_position = channel - 1
+        return bool((reg_0x0010 >> bit_position) & 0x01)
+    else:
+        # Extract from register 0x0011
+        reg_0x0011 = cache.get(0x0011)
+        if reg_0x0011 is None:
+            return None
+        bit_position = channel - 9  # Channel 9 = bit 0, Channel 10 = bit 1
+        return bool((reg_0x0011 >> bit_position) & 0x01)
+```
+
+#### State Examples
+
+**All channels closed:**
+```
+Register 0x0010: 0x00FF  (Binary: 0000000011111111) - Channels 1-8 closed
+Register 0x0011: 0x0003  (Binary: 0000000000000011) - Channels 9-10 closed
+```
+
+**Alternating pattern:**
+```
+Register 0x0010: 0x0055  (Binary: 0000000001010101) - Channels 1,3,5,7 closed
+Register 0x0011: 0x0001  (Binary: 0000000000000001) - Channel 9 closed
+```
+
+**All channels open:**
+```
+Register 0x0010: 0x0000  (Binary: 0000000000000000) - All channels 1-8 open
+Register 0x0011: 0x0000  (Binary: 0000000000000000) - All channels 9-10 open
+```
+
+#### Device Configuration
+
+**Channel Count:** Determined from register 0x0003 LSB (1-10 channels)
+
+**Device Type:** 0x59 (Contact Sensor Splitter)
+
+**UID Range:** 0x800000 - 0xFFFFFF (24-bit unique identifier)
+
+#### Usage Notes
+
+1. **Efficient Polling:** Only read register 0x0011 if device has >8 channels
+2. **Bit Operations:** Use bitwise AND and shift operations for reliable bit extraction
+3. **Cache Updates:** Update cache with both registers on each poll
+4. **Channel Validation:** Always check channel count before accessing channels 9-10
+
+#### Entity Mapping (Home Assistant)
+
+Each channel should be exposed as a binary sensor entity:
+
+- **Entity Type:** `binary_sensor`
+- **Device Class:** `opening` (for door/window sensors)
+- **Unique ID:** `ectocontrol_uid_{uid_hex}_channel_{n}`
+- **State Mapping:**
+  - `1` (Closed) → `on` (door/window closed)
+  - `0` (Open) → `off` (door/window open)
+
+---
+
 ---
 
 ## 4. Data Type Reference

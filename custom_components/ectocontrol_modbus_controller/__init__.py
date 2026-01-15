@@ -25,8 +25,9 @@ from .const import (
     MODBUS_READ_TIMEOUT,
 )
 from .modbus_protocol_manager import ModbusProtocolManager
-from .boiler_gateway import BoilerGateway
+from .device_router import create_device_gateway
 from .coordinator import BoilerDataUpdateCoordinator
+from .contact_coordinator import ContactSensorDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -80,16 +81,40 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
         _LOGGER.error("Failed to get Modbus protocol for %s: %s", port, err)
         return False
 
-    gateway = BoilerGateway(protocol, slave_id=slave)
-    coordinator = BoilerDataUpdateCoordinator(
-        hass,
-        gateway,
-        name=f"{DOMAIN}_{slave}",
-        update_interval=timedelta(seconds=polling_interval),
-        retry_count=retry_count,
-        read_timeout=read_timeout,
-        config_entry=entry,
-    )
+    # Create gateway using device router (detects device type automatically)
+    try:
+        gateway = await create_device_gateway(protocol, slave)
+    except ValueError as err:
+        _LOGGER.error("Failed to create device gateway for %s: %s", port, err)
+        return False
+
+    # Create appropriate coordinator based on gateway type
+    from .boiler_gateway import BoilerGateway
+    from .contact_gateway import ContactSensorGateway
+
+    if isinstance(gateway, BoilerGateway):
+        coordinator = BoilerDataUpdateCoordinator(
+            hass,
+            gateway,
+            name=f"{DOMAIN}_{slave}",
+            update_interval=timedelta(seconds=polling_interval),
+            retry_count=retry_count,
+            read_timeout=read_timeout,
+            config_entry=entry,
+        )
+    elif isinstance(gateway, ContactSensorGateway):
+        coordinator = ContactSensorDataUpdateCoordinator(
+            hass,
+            gateway,
+            name=f"{DOMAIN}_{slave}",
+            update_interval=timedelta(seconds=polling_interval),
+            retry_count=retry_count,
+            read_timeout=read_timeout,
+            config_entry=entry,
+        )
+    else:
+        _LOGGER.error("Unsupported gateway type for slave_id=%s", slave)
+        return False
 
     hass.data[DOMAIN][entry.entry_id] = {
         "port": port,
@@ -181,17 +206,28 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
         serial_number=gateway.get_device_uid_hex(),
     )
 
-    # Forward entry setups for platforms (include newly added platforms)
+    # Forward entry setups for platforms based on device type
     try:
-        forward = getattr(hass.config_entries, "async_forward_entry_setups", None)
-        if forward:
-            result = forward(
-                entry,
-                ["sensor", "switch", "number", "binary_sensor", "climate", "button"],
-            )
-            # if it's a coroutine, await it; some test fakes use MagicMock which returns non-awaitable
-            if asyncio.iscoroutine(result):
-                await result
+        from .boiler_gateway import BoilerGateway
+        from .contact_gateway import ContactSensorGateway
+
+        if isinstance(gateway, BoilerGateway):
+            # Boiler adapters: forward all platforms
+            platforms = ["sensor", "switch", "number", "binary_sensor", "climate", "button"]
+        elif isinstance(gateway, ContactSensorGateway):
+            # Contact Sensor Splitter: only binary_sensor needed
+            platforms = ["binary_sensor"]
+        else:
+            _LOGGER.warning("Unknown gateway type, not forwarding platforms")
+            platforms = []
+
+        if platforms:
+            forward = getattr(hass.config_entries, "async_forward_entry_setups", None)
+            if forward:
+                result = forward(entry, platforms)
+                # if it's a coroutine, await it; some test fakes use MagicMock which returns non-awaitable
+                if asyncio.iscoroutine(result):
+                    await result
     except Exception:
         # Best-effort: do not block setup on forwarding errors in test harness
         pass

@@ -57,10 +57,17 @@ DEVICE_TYPE_NAMES = {
     0x22: "Temperature Sensor",
     0x23: "Humidity Sensor",
     0x50: "Contact Sensor",
+    0x59: "Contact Splitter",  # Updated: dynamic channel count (1-10)
     0x59: "Contact Splitter 10ch",
     0xC0: "Relay Block 2ch",
     0xC1: "Relay Block 10ch",
 }
+
+# Contact Sensor Splitter Registers (Device Type 0x59)
+# Per Russian documentation MODBUS_PROTOCOL_RU.md section 3.2 "ДИСКРЕТНЫЕ ДАТЧИКИ"
+# Bitfield registers for contact states (1-10 channels)
+REGISTER_CONTACT_CHANNELS_1_8 = 0x0010   # Channels 1-8 bitfield (bits 0-7)
+REGISTER_CONTACT_CHANNELS_9_10 = 0x0011  # Channels 9-10 bitfield (bits 0-2)
 
 # Adapter Type Codes from REGISTER_STATUS (0x0010 bits 0-2)
 # Per Russian documentation (MODBUS_PROTOCOL_RU.md) - more specific than English docs
