@@ -1,0 +1,87 @@
+# ==============================================================================
+# TEMPERATURE CARD - Display all temperature sensors
+# ==============================================================================
+# Shows current and outdoor temperatures with a history graph
+# Can be used in any dashboard as a standalone card
+
+# Method 1: Using history-graph (built-in, no HACS required)
+- type: history-graph
+  title: Temperatures (24h)
+  hours_to_show: 24
+  refresh_interval: 300
+  entities:
+    - entity: sensor.ectocontrol_1_get_ch_temperature
+      name: CH Temp
+    - entity: sensor.ectocontrol_1_get_dhw_temperature
+      name: DHW Temp
+    - entity: sensor.ectocontrol_1_get_outdoor_temperature
+      name: Outdoor
+
+# Method 2: Using gauge cards (built-in)
+- type: horizontal-stack
+  cards:
+    - type: gauge
+      entity: sensor.ectocontrol_1_get_ch_temperature
+      name: CH Temperature
+      unit: °C
+      min: 0
+      max: 100
+      needle: true
+
+    - type: gauge
+      entity: sensor.ectocontrol_1_get_dhw_temperature
+      name: DHW Temperature
+      unit: °C
+      min: 0
+      max: 70
+      needle: true
+
+    - type: gauge
+      entity: sensor.ectocontrol_1_get_outdoor_temperature
+      name: Outdoor
+      unit: °C
+      min: -20
+      max: 40
+      needle: true
+
+# Method 3: Using glance card for current values
+- type: glance
+    title: Current Temperatures
+    columns: 3
+    entities:
+      - entity: sensor.ectocontrol_1_get_ch_temperature
+        name: CH
+        icon: mdi:thermometer
+      - entity: sensor.ectocontrol_1_get_dhw_temperature
+        name: DHW
+        icon: mdi:thermometer-water
+      - entity: sensor.ectocontrol_1_get_outdoor_temperature
+        name: Outdoor
+        icon: mdi:thermometer-low
+
+# Method 4: Using ApexCharts (requires HACS: apexcharts-card)
+- type: custom:apexcharts-card
+  chart_type: line
+  header:
+    title: Temperature Trends
+    show: true
+  span:
+    start: day
+  series:
+    - entity: sensor.ectocontrol_1_get_ch_temperature
+      name: CH Temp
+      type: area
+      stroke_width: 2
+      opacity: 0.3
+      color: orange
+    - entity: sensor.ectocontrol_1_get_dhw_temperature
+      name: DHW Temp
+      type: area
+      stroke_width: 2
+      opacity: 0.3
+      color: orangered
+    - entity: sensor.ectocontrol_1_get_outdoor_temperature
+      name: Outdoor
+      type: line
+      stroke_width: 2
+      color: blue

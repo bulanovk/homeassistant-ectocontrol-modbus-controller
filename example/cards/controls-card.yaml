@@ -1,0 +1,65 @@
+# ==============================================================================
+# CONTROLS CARD - Switches, Numbers, and Buttons
+# ==============================================================================
+# All control elements for the boiler system
+
+# Circuit Enable Switches
+- type: entities
+  title: Circuit Controls
+  entities:
+    - entity: switch.ectocontrol_1_circuit_0
+      name: Enable Heating
+      icon: mdi:radiator
+    - entity: switch.ectocontrol_1_circuit_1
+      name: Enable Hot Water
+      icon: mdi:water-pipe
+
+# Temperature Setpoints
+- type: entities
+  title: Temperature Setpoints
+  entities:
+    - entity: number.ectocontrol_1_ch_setpoint
+      name: CH Setpoint
+      icon: mdi:thermometer
+    - entity: number.ectocontrol_1_dhw_setpoint
+      name: DHW Setpoint
+      icon: mdi:thermometer-water
+
+# Temperature Limits
+- type: entities
+  title: Temperature Limits
+  entities:
+    - entity: number.ectocontrol_1_ch_min
+      name: CH Minimum
+      icon: mdi:thermometer-low
+    - entity: number.ectocontrol_1_ch_max
+      name: CH Maximum
+      icon: mdi:thermometer-high
+
+# Modulation Control
+- type: entities
+  title: Modulation Control
+  entities:
+    - entity: number.ectocontrol_1_max_modulation
+      name: Maximum Modulation (%)
+      icon: mdi:gauge
+
+# Climate Thermostat
+- type: thermostat
+  entity: climate.ectocontrol_1_climate
+  name: Central Heating
+
+# Maintenance Actions
+- type: entities
+  title: Maintenance
+  entities:
+    - entity: button.ectocontrol_1_reset_errors
+      name: Reset Errors
+      icon: mdi:alert-circle
+      tap_action:
+        action: call-action
+    - entity: button.ectocontrol_1_reboot
+      name: Reboot Adapter
+      icon: mdi:restart
+      tap_action:
+        action: call-action

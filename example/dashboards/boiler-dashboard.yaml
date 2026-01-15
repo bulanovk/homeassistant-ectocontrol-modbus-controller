@@ -1,0 +1,491 @@
+# ==============================================================================
+# Ectocontrol Modbus Boiler - Complete Dashboard
+# ==============================================================================
+# This is a comprehensive Home Assistant Lovelace dashboard for visualizing
+# and controlling the Ectocontrol Modbus Adapter v2 boiler integration.
+# Supports both gas and electric boilers.
+#
+# INSTRUCTIONS:
+# 1. Copy this content to a new dashboard in Home Assistant
+# 2. Replace {slave_id} with your actual Modbus slave ID (default: 1)
+# 3. Adjust entity_ids to match your configuration
+# 4. Customize layout and styling as needed
+#
+# OR import via: Settings -> Dashboards -> Add Dashboard -> Import YAML
+# ==============================================================================
+
+title: Boiler Control
+theme: default
+views:
+  # ==========================================================================
+  # VIEW 1: Overview - Main status at a glance
+  # ==========================================================================
+  - title: Overview
+    icon: mdi:radiator
+    path: overview
+    badges: []
+    cards:
+      # ---------------------------------------------------------------------
+      # Header Card - System Status
+      # ---------------------------------------------------------------------
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: Boiler Status
+            subtitle: Ectocontrol Modbus Adapter v2
+
+          - type: horizontal-stack
+            cards:
+              # Heating Element Status (Burner/Heater)
+              - type: custom:mushroom-entity-card
+                entity: binary_sensor.ectocontrol_1_get_burner_on
+                name: Heating Element
+                icon: mdi:fire
+                layout: vertical
+                tap_action:
+                  action: none
+
+              # Heating Circuit Status
+              - type: custom:mushroom-entity-card
+                entity: binary_sensor.ectocontrol_1_get_heating_enabled
+                name: Heating
+                icon: mdi:radiator
+                layout: vertical
+
+              # DHW Circuit Status
+              - type: custom:mushroom-entity-card
+                entity: binary_sensor.ectocontrol_1_get_dhw_enabled
+                name: Hot Water
+                icon: mdi:water-pipe
+                layout: vertical
+
+          # System Health
+          - type: gauge
+            entity: sensor.ectocontrol_1_get_pressure
+            name: System Pressure
+            unit: bar
+            min: 0
+            max: 3
+            needle: true
+            severity:
+              green: 1.2
+              yellow: 1.5
+              red: 2.5
+
+          - type: horizontal-stack
+            cards:
+              # Outdoor Temperature
+              - type: custom:mushroom-entity-card
+                entity: sensor.ectocontrol_1_get_outdoor_temperature
+                name: Outdoor
+                icon: mdi:thermometer
+                layout: vertical
+
+              # Flow Rate
+              - type: custom:mushroom-entity-card
+                entity: sensor.ectocontrol_1_get_flow_rate
+                name: Flow Rate
+                icon: mdi:water
+                layout: vertical
+
+              # Power/Modulation Level
+              - type: custom:mushroom-entity-card
+                entity: sensor.ectocontrol_1_get_modulation_level
+                name: Power Level
+                icon: mdi:gauge
+                layout: vertical
+
+      # ---------------------------------------------------------------------
+      # Quick Actions - Controls
+      # ---------------------------------------------------------------------
+      - type: custom:mushroom-chips-card
+        alignment: justify
+        chips:
+          - type: entity
+            entity: switch.ectocontrol_1_circuit_0
+            content: Heating
+            icon: mdi:radiator
+            tap_action:
+              action: toggle
+
+          - type: entity
+            entity: switch.ectocontrol_1_circuit_1
+            content: Hot Water
+            icon: mdi:water-pipe
+            tap_action:
+              action: toggle
+
+          - type: entity
+            entity: button.ectocontrol_1_reset_errors
+            content: Reset Errors
+            icon: mdi:alert-circle
+            tap_action:
+              action: call-action
+
+          - type: entity
+            entity: button.ectocontrol_1_reboot
+            content: Reboot
+            icon: mdi:restart
+            tap_action:
+              action: call-action
+
+  # ==========================================================================
+  # VIEW 2: Heating - Central heating control
+  # ==========================================================================
+  - title: Heating
+    icon: mdi:radiator
+    path: heating
+    badges: []
+    cards:
+      # Climate Control
+      - type: custom:compact-custom-header
+        background: var(--ha-card-background)
+
+      - type: thermostat
+        entity: climate.ectocontrol_1_climate
+        name: Central Heating
+
+      # Temperature Display
+      - type: vertical-stack
+        cards:
+          - type: custom:apexcharts-card
+            chart_type: line
+            header:
+              title: Temperature History
+              show: true
+              show_states: true
+              colorize_states: true
+            span:
+              start: day
+            series:
+              - entity: sensor.ectocontrol_1_get_ch_temperature
+                name: Current
+                type: area
+                stroke_width: 2
+                opacity: 0.3
+                color: orange
+
+              - entity: sensor.ectocontrol_1_get_ch_setpoint_active
+                name: Target
+                type: line
+                stroke_width: 2
+                color: red
+
+              - entity: sensor.ectocontrol_1_get_outdoor_temperature
+                name: Outdoor
+                type: line
+                stroke_width: 2
+                color: blue
+
+          # Current vs Target
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: sensor.ectocontrol_1_get_ch_temperature
+                name: Current Temp
+                icon: mdi:thermometer
+                layout: vertical
+                primary_info: state
+                secondary_info: none
+
+              - type: custom:mushroom-entity-card
+                entity: sensor.ectocontrol_1_get_ch_setpoint_active
+                name: Target Temp
+                icon: mdi:thermometer-lines
+                layout: vertical
+                primary_info: state
+                secondary_info: none
+
+      # Setpoint Controls
+      - type: entities
+        title: Setpoint Controls
+        entities:
+          - entity: number.ectocontrol_1_ch_setpoint
+            name: CH Setpoint
+
+          - entity: number.ectocontrol_1_ch_min
+            name: CH Minimum Limit
+
+          - entity: number.ectocontrol_1_ch_max
+            name: CH Maximum Limit
+
+          - entity: number.ectocontrol_1_max_modulation
+            name: Max Power Level
+
+      # Heating Enable Switch
+      - type: custom:mushroom-entity-card
+        entity: switch.ectocontrol_1_circuit_0
+        name: Enable Central Heating
+        icon: mdi:radiator
+        tap_action:
+          action: toggle
+
+  # ==========================================================================
+  # VIEW 3: Hot Water - Domestic hot water
+  # ==========================================================================
+  - title: Hot Water
+    icon: mdi:water-pipe
+    path: hotwater
+    badges: []
+    cards:
+      # DHW Status Card
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: Domestic Hot Water
+            subtitle: Current Status
+
+          # Status Indicators
+          - type: horizontal-stack
+            cards:
+              - type: custom:mushroom-entity-card
+                entity: binary_sensor.ectocontrol_1_get_dhw_enabled
+                name: DHW Enabled
+                icon: mdi:water-pipe
+                layout: vertical
+
+              - type: custom:mushroom-entity-card
+                entity: binary_sensor.ectocontrol_1_get_burner_on
+                name: Heating Active
+                icon: mdi:fire
+                layout: vertical
+
+          # Current Temperature
+          - type: custom:mushroom-entity-card
+            entity: sensor.ectocontrol_1_get_dhw_temperature
+            name: DHW Temperature
+            icon: mdi:thermometer-water
+            layout: vertical
+            primary_info: state
+            secondary_info: none
+
+          # DHW Temperature History
+          - type: custom:apexcharts-card
+            chart_type: line
+            header:
+              title: DHW Temperature (24h)
+              show: true
+            span:
+              start: day
+            series:
+              - entity: sensor.ectocontrol_1_get_dhw_temperature
+                name: Temperature
+                type: area
+                stroke_width: 2
+                opacity: 0.3
+                color: orangered
+
+      # DHW Controls
+      - type: entities
+        title: DHW Controls
+        entities:
+          - entity: number.ectocontrol_1_dhw_setpoint
+            name: DHW Setpoint Temperature
+
+          - entity: switch.ectocontrol_1_circuit_1
+            name: Enable DHW Circuit
+
+          - entity: number.ectocontrol_1_ch_min
+            name: DHW Min Limit
+
+          - entity: number.ectocontrol_1_ch_max
+            name: DHW Max Limit
+
+  # ==========================================================================
+  # VIEW 4: Statistics - Historical data and trends
+  # ==========================================================================
+  - title: Statistics
+    icon: mdi:chart-line
+    path: statistics
+    badges: []
+    cards:
+      # Temperature Trends
+      - type: custom:apexcharts-card
+        chart_type: line
+        header:
+          title: Temperature Trends (7 Days)
+          show: true
+          subtitle: Heating vs Outdoor
+        span:
+          start: week
+        series:
+          - entity: sensor.ectocontrol_1_get_ch_temperature
+            name: CH Temperature
+            type: line
+            stroke_width: 2
+            color: orange
+            group_by:
+              func: avg
+              duration: 1h
+
+          - entity: sensor.ectocontrol_1_get_outdoor_temperature
+            name: Outdoor Temperature
+            type: line
+            stroke_width: 2
+            color: blue
+            group_by:
+              func: avg
+              duration: 1h
+
+          - entity: sensor.ectocontrol_1_get_ch_setpoint_active
+            name: Setpoint
+            type: line
+            stroke_width: 2
+            color: red
+            group_by:
+              func: avg
+              duration: 1h
+
+      # Pressure History
+      - type: custom:apexcharts-card
+        chart_type: line
+        header:
+          title: System Pressure (7 Days)
+          show: true
+        span:
+          start: week
+        series:
+          - entity: sensor.ectocontrol_1_get_pressure
+            name: Pressure
+            type: area
+            stroke_width: 2
+            opacity: 0.3
+            color: deepskyblue
+            group_by:
+              func: avg
+              duration: 1h
+
+      # Power Level Analysis
+      - type: custom:apexcharts-card
+        chart_type: bar
+        header:
+          title: Power Level Distribution
+          show: true
+        span:
+          start: week
+        series:
+          - entity: sensor.ectocontrol_1_get_modulation_level
+            name: Power Level
+            type: column
+            group_by:
+              func: avg
+              duration: 1h
+
+      # Statistics Cards
+      - type: horizontal-stack
+        cards:
+          - type: statistic
+            entity: sensor.ectocontrol_1_get_ch_temperature
+            name: Avg CH Temp
+            period:
+              hour: 24
+
+          - type: statistic
+            entity: sensor.ectocontrol_1_get_pressure
+            name: Avg Pressure
+            period:
+              hour: 24
+
+          - type: statistic
+            entity: sensor.ectocontrol_1_get_modulation_level
+            name: Avg Power
+            period:
+              hour: 24
+
+  # ==========================================================================
+  # VIEW 5: Settings - Configuration and maintenance
+  # ==========================================================================
+  - title: Settings
+    icon: mdi:cog
+    path: settings
+    badges: []
+    cards:
+      # All Limits
+      - type: entities
+        title: Temperature Limits
+        entities:
+          - entity: number.ectocontrol_1_ch_min
+            name: CH Minimum
+            icon: mdi:thermometer-low
+
+          - entity: number.ectocontrol_1_ch_max
+            name: CH Maximum
+            icon: mdi:thermometer-high
+
+      # Power Level Settings
+      - type: entities
+        title: Power Level Settings
+        entities:
+          - entity: number.ectocontrol_1_max_modulation
+            name: Maximum Power Level
+            icon: mdi:gauge
+
+          - entity: sensor.ectocontrol_1_get_modulation_level
+            name: Current Power Level
+            icon: mdi:gauge
+
+      # Device Information
+      - type: entities
+        title: Device Information
+        entities:
+          - entity: sensor.ectocontrol_1_get_manufacturer_code
+            name: Manufacturer
+
+          - entity: sensor.ectocontrol_1_get_model_code
+            name: Model
+
+      # System Controls
+      - type: vertical-stack
+        cards:
+          - type: custom:mushroom-title-card
+            title: System Controls
+
+          - type: custom:mushroom-entity-card
+            entity: switch.ectocontrol_1_circuit_0
+            name: Heating Circuit
+            icon: mdi:radiator
+            tap_action:
+              action: toggle
+
+          - type: custom:mushroom-entity-card
+            entity: switch.ectocontrol_1_circuit_1
+            name: DHW Circuit
+            icon: mdi:water-pipe
+            tap_action:
+              action: toggle
+
+      # Maintenance Actions
+      - type: custom:mushroom-title-card
+        title: Maintenance Actions
+
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: button.ectocontrol_1_reset_errors
+            name: Reset Errors
+            icon: mdi:alert-circle
+            tap_action:
+              action: call-action
+
+          - type: custom:mushroom-entity-card
+            entity: button.ectocontrol_1_reboot
+            name: Reboot Adapter
+            icon: mdi:restart
+            tap_action:
+              action: call-action
+
+      # Debug Info
+      - type: entities
+        title: Debug Information
+        entities:
+          - entity: sensor.ectocontrol_1_get_ch_setpoint_active
+            name: Active Setpoint
+
+          - entity: sensor.ectocontrol_1_get_flow_rate
+            name: Flow Rate
+
+          - entity: binary_sensor.ectocontrol_1_get_heating_enabled
+            name: Heating Enabled
+
+          - entity: binary_sensor.ectocontrol_1_get_dhw_enabled
+            name: DHW Enabled

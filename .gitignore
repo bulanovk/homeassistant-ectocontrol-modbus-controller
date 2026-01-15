@@ -1,0 +1,10 @@
+.venv
+.venv313
+.pytest_cache/
+**/__pycache__/
+.claude/
+.claude_memory
+coverage.xml
+htmlcov/
+.factory
+.kilocode

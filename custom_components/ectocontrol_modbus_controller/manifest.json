@@ -1,0 +1,20 @@
+{
+  "domain": "ectocontrol_modbus_controller",
+  "name": "Ectocontrol Modbus Controller",
+  "version": "0.1.0",
+  "requirements": [
+    "modbus-tk>=1.1.5",
+    "pyserial>=3.5"
+  ],
+  "dependencies": [],
+  "codeowners": ["@bulanovk"],
+  "issue_tracker": "https://github.com/bulanovk/ecto_modbus_devs/issues",
+  "repository": "https://github.com/bulanovk/ecto_modbus_devs",
+  "license": "MIT",
+  "documentation": "https://github.com/bulanovk/ecto_modbus_devs/blob/main/docs/USAGE.md",
+  "config_flow": true,
+  "homeassistant": "2025.12.5",
+  "platforms": ["sensor", "switch", "number", "binary_sensor", "climate", "button"],
+  "iot_class": "local_polling",
+  "quality_scale": "silver"
+}

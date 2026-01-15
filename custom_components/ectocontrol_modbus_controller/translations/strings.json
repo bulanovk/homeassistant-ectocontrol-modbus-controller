@@ -1,0 +1,6 @@
+{
+  "title": "Ectocontrol Modbus Controller",
+  "description": "Integration for Ectocontrol Modbus Controller (RS-485 Modbus RTU). Polls boiler registers and exposes sensors, switches and setpoints.",
+  "documentation": "https://example.com/ectocontrol-modbus",
+  "issues": "https://example.com/ectocontrol-modbus/issues"
+}

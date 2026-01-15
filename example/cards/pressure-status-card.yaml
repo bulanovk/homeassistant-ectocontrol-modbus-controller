@@ -1,0 +1,62 @@
+# ==============================================================================
+# PRESSURE & STATUS CARD - System health monitoring
+# ==============================================================================
+# Monitors system pressure with warning thresholds and system status
+
+# Pressure Gauge with Severity Levels
+- type: gauge
+  entity: sensor.ectocontrol_1_get_pressure
+  name: System Pressure
+  unit: bar
+  min: 0
+  max: 3
+  needle: true
+  severity:
+    green: 1.5    # Normal pressure (1.0-1.5 bar)
+    yellow: 2.0   # Warning zone (1.5-2.0 bar)
+    red: 2.5      # Critical (>2.0 bar)
+
+# System Status Overview
+- type: glance
+  title: System Status
+  columns: 4
+  entities:
+    - entity: binary_sensor.ectocontrol_1_get_burner_on
+      name: Burner
+      icon: mdi:fire
+    - entity: binary_sensor.ectocontrol_1_get_heating_enabled
+      name: Heating
+      icon: mdi:radiator
+    - entity: binary_sensor.ectocontrol_1_get_dhw_enabled
+      name: DHW
+      icon: mdi:water-pipe
+    - entity: sensor.ectocontrol_1_get_flow_rate
+      name: Flow
+      icon: mdi:water
+
+# Pressure History Graph
+- type: history-graph
+  title: Pressure History (24h)
+  hours_to_show: 24
+  entities:
+    - entity: sensor.ectocontrol_1_get_pressure
+      name: Pressure
+
+# Pressure Statistics
+- type: horizontal-stack
+  cards:
+    - type: statistic
+      entity: sensor.ectocontrol_1_get_pressure
+      name: Current
+      period:
+        hour: 1
+    - type: statistic
+      entity: sensor.ectocontrol_1_get_pressure
+      name: 24h Avg
+      period:
+        hour: 24
+    - type: statistic
+      entity: sensor.ectocontrol_1_get_pressure
+      name: 7d Avg
+      period:
+        day: 7

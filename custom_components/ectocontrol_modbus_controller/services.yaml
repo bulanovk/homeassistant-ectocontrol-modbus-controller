@@ -1,0 +1,21 @@
+reboot_adapter:
+  name: Reboot adapter
+  description: Reboots the Ectocontrol Modbus Adapter hardware
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Config entry of the adapter to reboot (optional if only one adapter exists)
+      required: false
+      selector:
+        text:
+
+reset_boiler_errors:
+  name: Reset boiler errors
+  description: Resets error codes on the boiler
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Config entry of the adapter (optional if only one adapter exists)
+      required: false
+      selector:
+        text:

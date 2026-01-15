@@ -1,0 +1,197 @@
+# ==============================================================================
+# Ectocontrol Modbus Boiler - Compact Dashboard
+# ==============================================================================
+# A simplified, single-view dashboard using only built-in Home Assistant cards.
+# No external HACS custom cards required.
+# Supports both gas and electric boilers.
+#
+# INSTRUCTIONS:
+# 1. Replace {slave_id} with your actual Modbus slave ID (default: 1)
+# 2. Copy to Settings -> Dashboards -> Add Dashboard -> Import YAML
+# ==============================================================================
+
+title: Boiler Control (Compact)
+theme: default
+views:
+  - title: Boiler Control
+    icon: mdi:radiator
+    path: boiler
+    badges:
+      - entity: binary_sensor.ectocontrol_1_get_burner_on
+        name: Heating Element
+      - entity: binary_sensor.ectocontrol_1_get_heating_enabled
+        name: Heating
+      - entity: binary_sensor.ectocontrol_1_get_dhw_enabled
+        name: DHW
+      - entity: sensor.ectocontrol_1_get_outdoor_temperature
+        name: Outdoor
+
+    cards:
+      # ========================================================================
+      # SECTION 1: Quick Status
+      # ========================================================================
+      - type: glance
+        title: Quick Status
+        columns: 4
+        entities:
+          - entity: sensor.ectocontrol_1_get_ch_temperature
+            name: CH Temp
+            icon: mdi:thermometer
+
+          - entity: sensor.ectocontrol_1_get_dhw_temperature
+            name: DHW Temp
+            icon: mdi:thermometer-water
+
+          - entity: sensor.ectocontrol_1_get_pressure
+            name: Pressure
+            icon: mdi:gauge
+
+          - entity: sensor.ectocontrol_1_get_modulation_level
+            name: Power Level
+            icon: mdi:gauge
+
+      # ========================================================================
+      # SECTION 2: Temperature Display
+      # ========================================================================
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.ectocontrol_1_get_ch_temperature
+            name: CH Temperature
+            unit: °C
+            min: 0
+            max: 100
+            needle: true
+
+          - type: gauge
+            entity: sensor.ectocontrol_1_get_dhw_temperature
+            name: DHW Temperature
+            unit: °C
+            min: 0
+            max: 70
+            needle: true
+
+      # ========================================================================
+      # SECTION 3: Pressure Gauge
+      # ========================================================================
+      - type: gauge
+        entity: sensor.ectocontrol_1_get_pressure
+        name: System Pressure
+        unit: bar
+        min: 0
+        max: 3
+        needle: true
+        severity:
+          green: 1.5
+          yellow: 2.0
+          red: 2.5
+
+      # ========================================================================
+      # SECTION 4: Temperature Graph
+      # ========================================================================
+      - type: history-graph
+        title: Temperature History (24h)
+        hours_to_show: 24
+        refresh_interval: 300
+        entities:
+          - entity: sensor.ectocontrol_1_get_ch_temperature
+            name: CH Temp
+
+          - entity: sensor.ectocontrol_1_get_dhw_temperature
+            name: DHW Temp
+
+          - entity: sensor.ectocontrol_1_get_outdoor_temperature
+            name: Outdoor
+
+      # ========================================================================
+      # SECTION 5: Climate Control
+      # ========================================================================
+      - type: thermostat
+        entity: climate.ectocontrol_1_climate
+        name: Central Heating Thermostat
+
+      # ========================================================================
+      # SECTION 6: Setpoints & Limits
+      # ========================================================================
+      - type: entities
+        title: Temperature Settings
+        entities:
+          - entity: number.ectocontrol_1_ch_setpoint
+            name: CH Setpoint
+            icon: mdi:thermometer
+
+          - entity: number.ectocontrol_1_ch_min
+            name: CH Minimum
+            icon: mdi:thermometer-low
+
+          - entity: number.ectocontrol_1_ch_max
+            name: CH Maximum
+            icon: mdi:thermometer-high
+
+          - entity: number.ectocontrol_1_dhw_setpoint
+            name: DHW Setpoint
+            icon: mdi:thermometer-water
+
+      # ========================================================================
+      # SECTION 7: Circuit Controls
+      # ========================================================================
+      - type: entities
+        title: Circuit Controls
+        entities:
+          - entity: switch.ectocontrol_1_circuit_0
+            name: Enable Heating
+            icon: mdi:radiator
+
+          - entity: switch.ectocontrol_1_circuit_1
+            name: Enable Hot Water
+            icon: mdi:water-pipe
+
+      # ========================================================================
+      # SECTION 8: Power Level Control
+      # ========================================================================
+      - type: entities
+        title: Power Level Control
+        entities:
+          - entity: number.ectocontrol_1_max_modulation
+            name: Max Power Level
+            icon: mdi:gauge
+
+          - entity: sensor.ectocontrol_1_get_modulation_level
+            name: Current Power Level
+            icon: mdi:gauge
+
+      # ========================================================================
+      # SECTION 9: Maintenance Actions
+      # ========================================================================
+      - type: entities
+        title: Maintenance Actions
+        entities:
+          - entity: button.ectocontrol_1_reset_errors
+            name: Reset Errors
+            icon: mdi:alert-circle
+            tap_action:
+              action: call-action
+
+          - entity: button.ectocontrol_1_reboot
+            name: Reboot Adapter
+            icon: mdi:restart
+            tap_action:
+              action: call-action
+
+      # ========================================================================
+      # SECTION 10: Device Info
+      # ========================================================================
+      - type: entities
+        title: Device Information
+        entities:
+          - entity: sensor.ectocontrol_1_get_manufacturer_code
+            name: Manufacturer
+            icon: mdi:information
+
+          - entity: sensor.ectocontrol_1_get_model_code
+            name: Model
+            icon: mdi:information
+
+          - entity: sensor.ectocontrol_1_get_flow_rate
+            name: Flow Rate
+            icon: mdi:water

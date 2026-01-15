@@ -1,0 +1,6 @@
+{
+  "name": "Ectocontrol Modbus Controller",
+  "owner": "bulanovk",
+  "description": "Home Assistant integration for Ectocontrol Modbus Controller (RS-485 Modbus RTU).",
+  "render_readme": true
+}

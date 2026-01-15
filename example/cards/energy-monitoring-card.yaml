@@ -1,0 +1,88 @@
+# ==============================================================================
+# ENERGY MONITORING CARD - Boiler efficiency and power level analysis
+# ==============================================================================
+# Track heating element activity and power levels for efficiency insights
+# Works for both gas and electric boilers
+
+# Power Level Gauge
+- type: gauge
+  entity: sensor.ectocontrol_1_get_modulation_level
+  name: Power Level
+  unit: '%'
+  min: 0
+  max: 100
+  needle: true
+  severity:
+    green: 30
+    yellow: 70
+    red: 90
+
+# Power Level History (Bar Chart for Activity Level)
+- type: custom:apexcharts-card
+  chart_type: bar
+  header:
+    title: Power Level (24h)
+    show: true
+  span:
+    start: day
+  series:
+    - entity: sensor.ectocontrol_1_get_modulation_level
+      name: Power Level
+      type: column
+      group_by:
+        func: avg
+        duration: 1h
+
+# Heating Element Activity Timeline
+- type: history-graph
+  title: Heating Activity (24h)
+  hours_to_show: 24
+  entities:
+    - entity: binary_sensor.ectocontrol_1_get_burner_on
+      name: Heating On
+
+# Efficiency Stats
+- type: horizontal-stack
+  cards:
+    - type: statistic
+      entity: sensor.ectocontrol_1_get_modulation_level
+      name: Avg Power
+      period:
+        hour: 24
+    - type: statistic
+      entity: sensor.ectocontrol_1_get_flow_rate
+      name: Avg Flow
+      period:
+        hour: 24
+    - type: statistic
+      entity: sensor.ectocontrol_1_get_ch_temperature
+      name: Avg CH Temp
+      period:
+        hour: 24
+
+# Weekly Power Level Distribution
+- type: custom:apexcharts-card
+  chart_type: line
+  header:
+    title: Weekly Power Trends
+    show: true
+  span:
+    start: week
+  series:
+    - entity: sensor.ectocontrol_1_get_modulation_level
+      name: Power %
+      type: area
+      stroke_width: 2
+      opacity: 0.3
+      color: orangered
+      group_by:
+        func: avg
+        duration: 6h
+    - entity: sensor.ectocontrol_1_get_outdoor_temperature
+      name: Outdoor Temp
+      type: line
+      stroke_width: 2
+      color: skyblue
+      group_by:
+        func: avg
+        duration: 6h
