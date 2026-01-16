@@ -194,10 +194,16 @@ class ModbusProtocol:
                 )
                 return list(result)
             except modbus.ModbusError as exc:
-                _LOGGER.error("Modbus error read %s@%s: %s", start_addr, slave_id, exc)
+                _LOGGER.error(
+                    "Modbus error reading from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s",
+                    self.port, slave_id, start_addr, count, exc
+                )
                 return None
             except Exception as exc:  # pragma: no cover
-                _LOGGER.error("Unexpected error reading registers: %s", exc)
+                _LOGGER.error(
+                    "Unexpected error reading registers from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s",
+                    self.port, slave_id, start_addr, count, exc
+                )
                 return None
 
     async def read_input_registers(
@@ -218,7 +224,10 @@ class ModbusProtocol:
                 )
                 return list(result)
             except Exception as exc:  # pragma: no cover
-                _LOGGER.error("Modbus error read input regs: %s", exc)
+                _LOGGER.error(
+                    "Error reading input registers from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s",
+                    self.port, slave_id, start_addr, count, exc
+                )
                 return None
 
     async def write_registers(self, slave_id: int, start_addr: int, values: List[int]) -> bool:
@@ -241,10 +250,16 @@ class ModbusProtocol:
                 )
                 return True
             except modbus.ModbusError as exc:
-                _LOGGER.error("Modbus error write %s@%s: %s", start_addr, slave_id, exc)
+                _LOGGER.error(
+                    "Modbus error writing to port %s - Request: slave_id=%s, start_addr=0x%04X, values=%s - Error: %s",
+                    self.port, slave_id, start_addr, values, exc
+                )
                 return False
             except Exception as exc:  # pragma: no cover
-                _LOGGER.error("Unexpected error writing registers: %s", exc)
+                _LOGGER.error(
+                    "Unexpected error writing registers to port %s - Request: slave_id=%s, start_addr=0x%04X, values=%s - Error: %s",
+                    self.port, slave_id, start_addr, values, exc
+                )
                 return False
 
     async def write_register(
@@ -287,12 +302,18 @@ class ModbusProtocol:
             except (modbus.ModbusError, modbus.ModbusInvalidResponseError) as exc:
                 if not verify_response:
                     _LOGGER.debug(
-                        "Ignoring Modbus error for %s@%s (verify_response=False): %s",
-                        addr, slave_id, exc
+                        "Ignoring Modbus error for port %s (verify_response=False) - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s",
+                        self.port, slave_id, addr, value, exc
                     )
                     return True
-                _LOGGER.error("Modbus error write %s@%s: %s", addr, slave_id, exc)
+                _LOGGER.error(
+                    "Modbus error writing to port %s - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s",
+                    self.port, slave_id, addr, value, exc
+                )
                 return False
             except Exception as exc:
-                _LOGGER.error("Unexpected error writing register: %s", exc)
+                _LOGGER.error(
+                    "Unexpected error writing register to port %s - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s",
+                    self.port, slave_id, addr, value, exc
+                )
                 return False
