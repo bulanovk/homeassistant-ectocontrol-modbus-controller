@@ -26,10 +26,13 @@ class DebugSerial:
         self._serial = serial_instance
         self._name = name
         self._logger = logging.getLogger(f"{__name__}.{name}")
+        self._last_tx: bytes = b""
+        self._last_rx: bytes = b""
 
     def read(self, size: int = 1) -> bytes:
         """Read and log bytes from serial port."""
         data = self._serial.read(size)
+        self._last_rx = data
         if data:
             self._logger.debug("%s RX (%d bytes): %s", self._name, len(data), data.hex(" "))
         else:
@@ -38,8 +41,13 @@ class DebugSerial:
 
     def write(self, data: bytes) -> int:
         """Write and log bytes to serial port."""
+        self._last_tx = data
         self._logger.debug("%s TX (%d bytes): %s", self._name, len(data), data.hex(" "))
         return self._serial.write(data)
+
+    def get_last_tx_rx(self) -> tuple[bytes, bytes]:
+        """Get last TX and RX bytes for error reporting."""
+        return self._last_tx, self._last_rx
 
     def flush(self) -> None:
         """Flush serial port buffers."""
@@ -124,6 +132,13 @@ class ModbusProtocol:
         self.debug_modbus = debug_modbus
         self.client = None
         self._lock = asyncio.Lock()
+        self._debug_serial: Optional[DebugSerial] = None
+
+    def _get_last_tx_rx(self) -> tuple[bytes, bytes]:
+        """Get last TX/RX bytes if debug mode is enabled."""
+        if self._debug_serial:
+            return self._debug_serial.get_last_tx_rx()
+        return b"", b""
 
     def _connect_sync(self):
         ser = serial.Serial(
@@ -135,7 +150,8 @@ class ModbusProtocol:
             timeout=self.timeout,
         )
         if self.debug_modbus:
-            ser = DebugSerial(ser, name=f"MODBUS_{self.port}")
+            self._debug_serial = DebugSerial(ser, name=f"MODBUS_{self.port}")
+            ser = self._debug_serial
             _LOGGER.info("Modbus debug logging enabled for %s", self.port)
         master = modbus_rtu.RtuMaster(ser)
         master.set_timeout(self.timeout)
@@ -194,15 +210,21 @@ class ModbusProtocol:
                 )
                 return list(result)
             except modbus.ModbusError as exc:
+                tx, rx = self._get_last_tx_rx()
+                tx_hex = tx.hex(" ") if tx else "N/A"
+                rx_hex = rx.hex(" ") if rx else "N/A"
                 _LOGGER.error(
-                    "Modbus error reading from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s",
-                    self.port, slave_id, start_addr, count, exc
+                    "Modbus error reading from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s | TX: %s | RX: %s",
+                    self.port, slave_id, start_addr, count, exc, tx_hex, rx_hex
                 )
                 return None
             except Exception as exc:  # pragma: no cover
+                tx, rx = self._get_last_tx_rx()
+                tx_hex = tx.hex(" ") if tx else "N/A"
+                rx_hex = rx.hex(" ") if rx else "N/A"
                 _LOGGER.error(
-                    "Unexpected error reading registers from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s",
-                    self.port, slave_id, start_addr, count, exc
+                    "Unexpected error reading registers from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s | TX: %s | RX: %s",
+                    self.port, slave_id, start_addr, count, exc, tx_hex, rx_hex
                 )
                 return None
 
@@ -224,9 +246,12 @@ class ModbusProtocol:
                 )
                 return list(result)
             except Exception as exc:  # pragma: no cover
+                tx, rx = self._get_last_tx_rx()
+                tx_hex = tx.hex(" ") if tx else "N/A"
+                rx_hex = rx.hex(" ") if rx else "N/A"
                 _LOGGER.error(
-                    "Error reading input registers from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s",
-                    self.port, slave_id, start_addr, count, exc
+                    "Error reading input registers from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s | TX: %s | RX: %s",
+                    self.port, slave_id, start_addr, count, exc, tx_hex, rx_hex
                 )
                 return None
 
@@ -250,15 +275,21 @@ class ModbusProtocol:
                 )
                 return True
             except modbus.ModbusError as exc:
+                tx, rx = self._get_last_tx_rx()
+                tx_hex = tx.hex(" ") if tx else "N/A"
+                rx_hex = rx.hex(" ") if rx else "N/A"
                 _LOGGER.error(
-                    "Modbus error writing to port %s - Request: slave_id=%s, start_addr=0x%04X, values=%s - Error: %s",
-                    self.port, slave_id, start_addr, values, exc
+                    "Modbus error writing to port %s - Request: slave_id=%s, start_addr=0x%04X, values=%s - Error: %s | TX: %s | RX: %s",
+                    self.port, slave_id, start_addr, values, exc, tx_hex, rx_hex
                 )
                 return False
             except Exception as exc:  # pragma: no cover
+                tx, rx = self._get_last_tx_rx()
+                tx_hex = tx.hex(" ") if tx else "N/A"
+                rx_hex = rx.hex(" ") if rx else "N/A"
                 _LOGGER.error(
-                    "Unexpected error writing registers to port %s - Request: slave_id=%s, start_addr=0x%04X, values=%s - Error: %s",
-                    self.port, slave_id, start_addr, values, exc
+                    "Unexpected error writing registers to port %s - Request: slave_id=%s, start_addr=0x%04X, values=%s - Error: %s | TX: %s | RX: %s",
+                    self.port, slave_id, start_addr, values, exc, tx_hex, rx_hex
                 )
                 return False
 
@@ -300,20 +331,26 @@ class ModbusProtocol:
                 )
                 return True
             except (modbus.ModbusError, modbus.ModbusInvalidResponseError) as exc:
+                tx, rx = self._get_last_tx_rx()
+                tx_hex = tx.hex(" ") if tx else "N/A"
+                rx_hex = rx.hex(" ") if rx else "N/A"
                 if not verify_response:
                     _LOGGER.debug(
-                        "Ignoring Modbus error for port %s (verify_response=False) - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s",
-                        self.port, slave_id, addr, value, exc
+                        "Ignoring Modbus error for port %s (verify_response=False) - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s | TX: %s | RX: %s",
+                        self.port, slave_id, addr, value, exc, tx_hex, rx_hex
                     )
                     return True
                 _LOGGER.error(
-                    "Modbus error writing to port %s - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s",
-                    self.port, slave_id, addr, value, exc
+                    "Modbus error writing to port %s - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s | TX: %s | RX: %s",
+                    self.port, slave_id, addr, value, exc, tx_hex, rx_hex
                 )
                 return False
             except Exception as exc:
+                tx, rx = self._get_last_tx_rx()
+                tx_hex = tx.hex(" ") if tx else "N/A"
+                rx_hex = rx.hex(" ") if rx else "N/A"
                 _LOGGER.error(
-                    "Unexpected error writing register to port %s - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s",
-                    self.port, slave_id, addr, value, exc
+                    "Unexpected error writing register to port %s - Request: slave_id=%s, addr=0x%04X, value=%s - Error: %s | TX: %s | RX: %s",
+                    self.port, slave_id, addr, value, exc, tx_hex, rx_hex
                 )
                 return False
