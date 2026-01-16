@@ -17,7 +17,7 @@ MODBUS_RETRY_COUNT = 3
 MODBUS_READ_TIMEOUT = 3.0
 
 # Serial port patterns to include (USB adapters, RS-485 converters, hardware serial)
-# Linux: ttyUSB* (USB-Serial), ttyACM* (USB CDC), ttyAMA* (Raspberry Pi UART)
+# Linux: ttyUSB* (USB-Serial), ttyACM* (USB CDC), ttyAMA* (Raspberry Pi UART), pts* (PTY for testing)
 # Windows: COM*
 # macOS: cu.* or tty.*
 SERIAL_PORT_PATTERNS = [
@@ -25,6 +25,7 @@ SERIAL_PORT_PATTERNS = [
     "/dev/ttyACM*",   # Linux USB CDC devices (Arduino, etc.)
     "/dev/ttyAMA*",   # Raspberry Pi hardware UART
     "/dev/ttyS*",     # Linux hardware serial ports
+    "/dev/pts/*",     # Linux pseudo-terminals (PTY) for testing/virtual devices
     "COM*",           # Windows COM ports
     "/dev/cu.*",      # macOS serial ports (call-out)
     "/dev/tty.*",     # macOS serial ports (terminal)
