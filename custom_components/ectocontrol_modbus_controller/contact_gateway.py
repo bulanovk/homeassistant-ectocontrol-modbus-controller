@@ -65,15 +65,17 @@ class ContactSensorGateway:
             )
             return False
 
-        # Extract UID: 24-bit value from registers 0x0000-0x0002
+        # Extract UID: 24-bit value from registers 0x0000-0x0001
         # Per Russian documentation MODBUS_PROTOCOL_RU.md:
-        #   Byte 0 (RSVD), Bytes 1-3 (UID), Byte 4 (RSVD), Bytes 5-7 (ADDR, TYPE, CHN_CNT)
-        # UID byte 1 (LSB) = register 0x0000 LSB
-        # UID byte 2 (middle) = register 0x0001 MSB
-        # UID byte 3 (MSB) = register 0x0001 LSB
-        uid_byte_lsb = regs[0] & 0xFF  # Register 0x0000 LSB
-        uid_byte_mid = (regs[1] >> 8) & 0xFF  # Register 0x0001 MSB
-        uid_byte_msb = regs[1] & 0xFF  # Register 0x0001 LSB
+        #   UID is 3 bytes in big-endian order across bytes 1-3 of the stream
+        #   Register 0x0000: RSVD (MSB), UID MSB (LSB)
+        #   Register 0x0001: UID middle (MSB), UID LSB (LSB)
+        # Example: bytes 80 00 01 (big-endian) = UID 0x800001
+        uid_byte_msb = regs[0] & 0xFF  # Register 0x0000 LSB = UID MSB
+        uid_byte_mid = (regs[1] >> 8) & 0xFF  # Register 0x0001 MSB = UID middle
+        uid_byte_lsb = regs[1] & 0xFF  # Register 0x0001 LSB = UID LSB
+        
+        # Combine as big-endian: MSB << 16 | middle << 8 | LSB
         self.device_uid = (uid_byte_msb << 16) | (uid_byte_mid << 8) | uid_byte_lsb
 
         # Validate UID range

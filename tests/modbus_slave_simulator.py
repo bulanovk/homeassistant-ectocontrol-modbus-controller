@@ -60,17 +60,16 @@ class ModbusSlaveSimulator:
         """Initialize register map with default values for OpenTherm Adapter v2."""
         # Generic device info (0x0000-0x0003)
         # Per Russian documentation MODBUS_PROTOCOL_RU.md:
-        #   Byte 0 (RSVD), Bytes 1-3 (UID), Byte 4 (RSVD), Bytes 5-7 (ADDR, TYPE, CHN_CNT)
-        # UID byte 1 (LSB) = register 0x0000 LSB
-        # UID byte 2 (middle) = register 0x0001 MSB
-        # UID byte 3 (MSB) = register 0x0001 LSB
-        # Example: UID = 0x8ABCDEF → bytes are 0xEF, 0xCD, 0xAB
-        # Register 0x0000 = 0x00EF (RSVD=0x00, UID byte1=0xEF)
-        # Register 0x0001 = 0xABCD (UID byte3=0xAB, byte2=0xCD)
+        #   UID is 3 bytes in big-endian order: MSB (byte 1), mid (byte 2), LSB (byte 3)
+        #   Register 0x0000: RSVD (MSB), UID MSB (LSB)
+        #   Register 0x0001: UID middle (MSB), UID LSB (LSB)
+        # Example: UID = 0x8ABCDE → bytes 8A BC DE (big-endian)
+        #   Register 0x0000 = 0x008A (RSVD=0x00, UID MSB=0x8A)
+        #   Register 0x0001 = 0xBCDE (UID mid=0xBC, LSB=0xDE)
         self.registers = {
-            0x0000: 0x00EF,  # RSVD (0x00) + UID byte 1 LSB (0xEF)
-            0x0001: 0xABCD,  # UID byte 3 MSB (0xAB) + UID byte 2 (0xCD)
-            0x0002: 0xDE00,  # UID byte 4 (not used per docs) + RSVD
+            0x0000: 0x008A,  # RSVD (0x00) + UID byte 1 MSB (0x8A)
+            0x0001: 0xBCDE,  # UID byte 3 MSB (0xBC) + byte 2 (0xDE)
+            0x0002: 0x0000,  # Not used for UID in protocol
             0x0003: (self.device_type << 8) | 0x04,  # Device type + channel count
         }
 
