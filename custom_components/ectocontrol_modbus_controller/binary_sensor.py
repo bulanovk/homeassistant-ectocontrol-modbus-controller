@@ -10,21 +10,30 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from .const import DOMAIN
 
 
-BINARY_SENSORS = [
+# Binary sensors for BoilerGateway (OpenTherm/eBus/Navien adapters)
+BOILER_BINARY_SENSORS = [
     ("Burner On", "get_burner_on"),
     ("Heating Enabled", "get_heating_enabled"),
     ("DHW Enabled", "get_dhw_enabled"),
     ("Boiler Connection", "get_is_boiler_connected"),
 ]
 
+# ContactSensorGateway uses contact_binary_sensor.py instead (no boiler states here)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry, async_add_entities: AddEntitiesCallback):
+    from .boiler_gateway import BoilerGateway
+
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator = data["coordinator"]
+    gateway = coordinator.gateway
 
     entities = []
-    for name, getter in BINARY_SENSORS:
-        entities.append(BoilerBinarySensor(coordinator, getter, name))
+
+    # Only create boiler-specific binary sensors for BoilerGateway
+    if isinstance(gateway, BoilerGateway):
+        for name, getter in BOILER_BINARY_SENSORS:
+            entities.append(BoilerBinarySensor(coordinator, getter, name))
 
     async_add_entities(entities)
 
