@@ -17,6 +17,12 @@ from .const import DEFAULT_SCAN_INTERVAL, MODBUS_RETRY_COUNT, MODBUS_READ_TIMEOU
 
 _LOGGER = logging.getLogger(__name__)
 
+# Register name mapping for debug output
+_REGISTER_NAMES = {
+    0x0010: "CONTACT_CHANNELS_1_8",
+    0x0011: "CONTACT_CHANNELS_9_10",
+}
+
 
 class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
     """Coordinator for polling Contact Sensor Splitter states.
@@ -113,9 +119,8 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
             self.gateway.cache = {0x0010: regs[0]}
             if self.debug_modbus:
                 _LOGGER.debug(
-                    "Contact states for slave_id=%s: 0x0010=0x%04X",
-                    self.gateway.slave_id,
-                    regs[0]
+                    "Contact states: %s",
+                    f"{_REGISTER_NAMES.get(0x0010, '0x0010')}=0x{regs[0]:04X}({regs[0]})"
                 )
             return self.gateway.cache
         else:
@@ -142,10 +147,11 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
             self.gateway.cache = {0x0010: regs[0], 0x0011: regs[1]}
             if self.debug_modbus:
                 _LOGGER.debug(
-                    "Contact states for slave_id=%s: 0x0010=0x%04X, 0x0011=0x%04X",
-                    self.gateway.slave_id,
-                    regs[0],
-                    regs[1]
+                    "Contact states: %s",
+                    ", ".join(
+                        f"{_REGISTER_NAMES.get(addr, f'0x{addr:04X}')}=0x{val:04X}({val})"
+                        for addr, val in [(0x0010, regs[0]), (0x0011, regs[1])]
+                    )
                 )
             return self.gateway.cache
 
