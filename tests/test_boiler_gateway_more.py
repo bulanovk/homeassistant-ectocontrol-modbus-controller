@@ -67,7 +67,6 @@ async def test_boiler_gateway_edge_cases_and_writes():
     assert proto.writes[-1][0] == 5
     assert proto.writes[-1][1] == 0x0031
     assert proto.writes[-1][2] == 123
-    assert proto.writes[-1][3].get('verify_response') is False
 
     # test set_circuit_enable_bit uses cached value for read-modify-write
     gw.cache = {0x0039: 0x0001}  # bit 0 already set
@@ -77,13 +76,10 @@ async def test_boiler_gateway_edge_cases_and_writes():
     ok3 = await gw.reboot_adapter()
     assert proto.writes[-1][1] == 0x0080
     assert proto.writes[-1][2] == 2
-    assert proto.writes[-1][3].get('verify_response') is False
 
     ok4 = await gw.reset_boiler_errors()
     assert proto.writes[-1][1] == 0x0080
     assert proto.writes[-1][2] == 3
-    # reset errors also uses verify_response=False (both commands read result register separately)
-    assert proto.writes[-1][3].get('verify_response') is False
     assert ok3 is True and ok4 is True
 
 

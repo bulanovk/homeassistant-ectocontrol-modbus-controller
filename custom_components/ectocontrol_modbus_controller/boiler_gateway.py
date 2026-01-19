@@ -646,7 +646,7 @@ class BoilerGateway:
         return None if msb == 0xFF else float(msb)
 
     async def set_ch_setpoint(self, value_raw: int) -> bool:
-        """Set CH setpoint (register 0x0031 is write-only, no response expected).
+        """Set CH setpoint.
 
         Updates the shared cache to keep climate and number entities in sync.
         """
@@ -655,13 +655,13 @@ class BoilerGateway:
         self._ch_setpoint_cache = temp_value
 
         return await self.protocol.write_register(
-            self.slave_id, REGISTER_CH_SETPOINT, value_raw, verify_response=False
+            self.slave_id, REGISTER_CH_SETPOINT, value_raw
         )
 
     async def set_dhw_setpoint(self, value: int) -> bool:
-        """Set DHW setpoint (register 0x0037 is write-only, no response expected)."""
+        """Set DHW setpoint."""
         return await self.protocol.write_register(
-            self.slave_id, REGISTER_DHW_SETPOINT, value, verify_response=False
+            self.slave_id, REGISTER_DHW_SETPOINT, value
         )
 
     async def set_max_modulation(self, value: int) -> bool:
@@ -755,7 +755,6 @@ class BoilerGateway:
             self.slave_id,
             REGISTER_COMMAND,
             2,
-            verify_response=False
         )
         if not result:
             _LOGGER.error("Failed to send reboot command to slave_id=%s", self.slave_id)
@@ -792,7 +791,6 @@ class BoilerGateway:
             self.slave_id,
             REGISTER_COMMAND,
             3,
-            verify_response=False
         )
         if not result:
             _LOGGER.error("Failed to send reset errors command to slave_id=%s", self.slave_id)

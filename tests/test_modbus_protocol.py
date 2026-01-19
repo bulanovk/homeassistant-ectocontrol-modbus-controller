@@ -68,19 +68,14 @@ async def test_write_register_uses_multiple_registers_function():
 
 
 @pytest.mark.asyncio
-async def test_write_register_suppresses_error_when_verify_response_false():
-    """Test that write_register returns True on error if verify_response is False."""
+async def test_write_register_returns_false_on_error():
+    """Test that write_register returns False on Modbus error."""
     protocol = ModbusProtocol("/dev/ttyUSB0")
     mock_master = MagicMock()
     # Simulate an error (e.g. invalid response length 0)
     mock_master.execute.side_effect = modbus_tk.modbus.ModbusInvalidResponseError("Response length is invalid 0")
     protocol.client = mock_master
 
-    # Should return True because verify_response=False
-    result = await protocol.write_register(1, 0x0080, 2, verify_response=False)
-    assert result is True
-
-    # Should return False if verify_response=True (default)
-    mock_master.execute.side_effect = modbus_tk.modbus.ModbusInvalidResponseError("Response length is invalid 0")
-    result = await protocol.write_register(1, 0x0080, 2, verify_response=True)
+    # Should return False on error
+    result = await protocol.write_register(1, 0x0080, 2)
     assert result is False
