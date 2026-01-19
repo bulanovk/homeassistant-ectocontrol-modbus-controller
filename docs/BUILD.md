@@ -328,6 +328,49 @@ python -c "import serial.tools.list_ports; print([p.device for p in serial.tools
 - Gateway command sent successfully
 - Any errors during Modbus write operation
 
+### Testing with Emulator
+
+For integration testing without physical hardware, use the Modbus emulator with socat PTY:
+
+**Setup socat PTY:**
+```bash
+# Create two connected pseudo-terminals
+socat -d -d -ls pty,link=/tmp/ttyVIRTUAL0,raw,echo=0 pty,link=/tmp/ttyVIRTUAL1,raw,echo=0
+```
+
+**Run emulator:**
+```bash
+# Terminal 1: Run simulator on one PTY
+python -m tests.modbus_slave_simulator --port /tmp/ttyVIRTUAL1 --slave-id 1
+```
+
+**Configure HA:**
+```python
+# In config flow, use the OTHER PTY
+port: /tmp/ttyVIRTUAL0
+slave_id: 1  # Must match emulator's --slave-id
+```
+
+**Verify communication:**
+```bash
+# Enable verbose socat logging to see data transfer
+socat -d -d -d -x -ls pty,link=/tmp/ttyVIRTUAL0,raw,echo=0 pty,link=/tmp/ttyVIRTUAL1,raw,echo=0
+
+# Check logs for:
+# - "transferred 8 bytes from X to Y" (TX from HA)
+# - "transferred 5 bytes from Y to X" (RX from emulator)
+```
+
+**Common emulator issues:**
+
+| Issue | Symptom | Fix |
+|-------|---------|-----|
+| Slave ID mismatch | "Exception code = 2" in logs | Match HA slave_id to emulator's `--slave-id` |
+| Emulator not running | TX but no RX in socat logs | Start emulator: `python -m tests.modbus_slave_simulator --port /tmp/ttyVIRTUAL1 --slave-id 1` |
+| Wrong PTY path | "No such file or directory" | Verify PTY path matches socat output |
+
+For detailed troubleshooting, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ---
 
 ## Committing & Creating a Pull Request

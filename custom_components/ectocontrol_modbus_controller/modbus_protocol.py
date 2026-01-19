@@ -28,12 +28,14 @@ class DebugSerial:
         self._logger = logging.getLogger(f"{__name__}.{name}")
         self._last_tx: bytes = b""
         self._last_rx: bytes = b""
+        self._last_rx_with_data: bytes = b""  # Store last non-empty RX
 
     def read(self, size: int = 1) -> bytes:
         """Read and log bytes from serial port."""
         data = self._serial.read(size)
         self._last_rx = data
         if data:
+            self._last_rx_with_data = data  # Store for error reporting
             self._logger.debug("%s RX (%d bytes): %s", self._name, len(data), data.hex(" "))
         else:
             self._logger.debug("%s RX: timeout (0 bytes)", self._name)
@@ -47,7 +49,9 @@ class DebugSerial:
 
     def get_last_tx_rx(self) -> tuple[bytes, bytes]:
         """Get last TX and RX bytes for error reporting."""
-        return self._last_tx, self._last_rx
+        # Return the last non-empty RX if available, otherwise use last_rx
+        rx_data = self._last_rx_with_data if self._last_rx_with_data else self._last_rx
+        return self._last_tx, rx_data
 
     def flush(self) -> None:
         """Flush serial port buffers."""
@@ -213,10 +217,34 @@ class ModbusProtocol:
                 tx, rx = self._get_last_tx_rx()
                 tx_hex = tx.hex(" ") if tx else "N/A"
                 rx_hex = rx.hex(" ") if rx else "N/A"
-                _LOGGER.error(
-                    "Modbus error reading from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s | TX: %s | RX: %s",
-                    self.port, slave_id, start_addr, count, exc, tx_hex, rx_hex
-                )
+
+                # Parse Modbus exception response if available
+                exception_msg = str(exc)
+                if rx and len(rx) >= 2:
+                    # Check if it's an exception response (function code | 0x80)
+                    if rx[1] & 0x80:
+                        exception_code = rx[2] if len(rx) > 2 else 0
+                        exception_msgs = {
+                            0x01: "Illegal function",
+                            0x02: "Illegal data address",
+                            0x03: "Illegal data value",
+                            0x04: "Slave device failure",
+                        }
+                        exception_msg = f"{exception_msgs.get(exception_code, f'Exception code {exception_code}')} - slave responded with error"
+                        _LOGGER.error(
+                            "Modbus error reading from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s | TX: %s | RX: %s (device returned exception response)",
+                            self.port, slave_id, start_addr, count, exception_msg, tx_hex, rx_hex
+                        )
+                    else:
+                        _LOGGER.error(
+                            "Modbus error reading from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s | TX: %s | RX: %s",
+                            self.port, slave_id, start_addr, count, exc, tx_hex, rx_hex
+                        )
+                else:
+                    _LOGGER.error(
+                        "Modbus error reading from port %s - Request: slave_id=%s, start_addr=0x%04X, count=%d - Error: %s | TX: %s | RX: %s",
+                        self.port, slave_id, start_addr, count, exc, tx_hex, rx_hex
+                    )
                 return None
             except Exception as exc:  # pragma: no cover
                 tx, rx = self._get_last_tx_rx()

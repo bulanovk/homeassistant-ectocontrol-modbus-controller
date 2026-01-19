@@ -660,6 +660,99 @@ async def test_config_flow_success(hass: HomeAssistant):
 
 ---
 
+## Integration Testing with socat PTY
+
+For testing with virtual serial ports without physical hardware, use socat PTY pairs.
+
+### Setup socat PTY
+
+```bash
+# Create two connected pseudo-terminals
+socat -d -d -ls pty,link=/tmp/ttyVIRTUAL0,raw,echo=0 pty,link=/tmp/ttyVIRTUAL1,raw,echo=0
+```
+
+Output example:
+```
+2026/01/19 12:45:28 socat[325] N PTY is /dev/pts/7
+2026/01/19 12:45:28 socat[325] N PTY is /dev/pts/5
+2026/01/19 12:45:28 socat[325] N spawning "pty" option
+2026/01/19 12:45:28 socat[325] N starting data loop
+```
+
+### Run Modbus Emulator
+
+Terminal 1:
+```bash
+# Run simulator on one PTY
+python -m modbus_slave_simulator --port /tmp/ttyVIRTUAL1 --slave-id 1
+```
+
+### Configure Home Assistant
+
+Terminal 2 (in HA config flow):
+- **Port**: `/tmp/ttyVIRTUAL0` (the OTHER PTY)
+- **Slave ID**: `1` (must match emulator)
+- Enable **Debug Modbus** for detailed logging
+
+### Diagnosing socat PTY Issues
+
+**Enable verbose socat logging:**
+```bash
+socat -d -d -d -x -ls pty,link=/tmp/ttyVIRTUAL0,raw,echo=0 pty,link=/tmp/ttyVIRTUAL1,raw,echo=0
+```
+
+**Interpreting socat logs:**
+```
+2026/01/19 12:45:28 socat[325] I transferred 8 bytes from 7 to 5
+2026/01/19 12:45:28 socat[325] I transferred 5 bytes from 5 to 7
+```
+
+- **8 bytes from 7 to 5**: HA → Emulator (request)
+  - `04 03 00 10 00 01 85 9a` = slave_id=4, read_holding_registers, addr=0x0010, count=1
+
+- **5 bytes from 5 to 7**: Emulator → HA (response)
+  - Normal: `04 03 02 00 64 f1` = slave_id=4, function=0x03, byte_count=2, data=0x0064, crc
+  - Error: `04 83 02 c0 f1` = slave_id=4, error_flag, exception_code=02 (illegal address), crc
+
+### Common PTY Issues
+
+| Issue | Symptom | Fix |
+|-------|---------|-----|
+| **Slave ID mismatch** | `Exception code = 2` in logs | Match HA slave_id to emulator's `--slave-id` parameter |
+| **Wrong PTY path** | "No such file or directory" | Use exact path from socat output (e.g., `/tmp/ttyVIRTUAL0`) |
+| **Permissions denied** | "Permission denied" | Check PTY permissions: `ls -l /tmp/ttyVIRTUAL*` |
+| **Stale PTY** | Connection hangs | Restart socat: `pkill socat` and recreate PTY |
+| **Emulator not running** | TX but no RX | Verify emulator process: `ps aux \| grep simulator` |
+
+### Troubleshooting Modbus Errors with PTY
+
+**Enable debug logging in HA:**
+```yaml
+# configuration.yaml
+logger:
+  logs:
+    custom_components.ectocontrol_modbus_controller.modbus_protocol: debug
+```
+
+**Check HA logs for TX/RX:**
+```
+custom_components.ectocontrol_modbus_controller.modbus_protocol.MODBUS_COM3: MODBUS_COM3 TX (8 bytes): 04 03 00 10 00 01 85 9a
+custom_components.ectocontrol_modbus_controller.modbus_protocol.MODBUS_COM3: MODBUS_COM3 RX (5 bytes): 04 83 02 c0 f1
+```
+
+**If RX shows "N/A":**
+- Request was sent but no response received
+- Check emulator is running on correct PTY
+- Verify slave_id matches
+
+**If RX shows error response (0x83 prefix):**
+- Response received but contains exception code
+- Check slave_id and register address match emulator configuration
+
+For more detailed troubleshooting, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+---
+
 ## Running Tests
 
 ### Quick Test Run

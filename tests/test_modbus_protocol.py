@@ -5,7 +5,7 @@ import pytest
 import modbus_tk.defines as cst
 import modbus_tk.modbus
 
-from custom_components.ectocontrol_modbus_controller.modbus_protocol import ModbusProtocol
+from custom_components.ectocontrol_modbus_controller.modbus_protocol import ModbusProtocol, DebugSerial
 
 
 @pytest.mark.asyncio
@@ -79,3 +79,46 @@ async def test_write_register_returns_false_on_error():
     # Should return False on error
     result = await protocol.write_register(1, 0x0080, 2)
     assert result is False
+
+
+def test_debug_serial_preserves_last_rx_with_data():
+    """Test that DebugSerial preserves the last non-empty RX for error reporting.
+
+    This ensures that when modbus-tk raises an exception after receiving an error
+    response, the exception handler can still access the RX bytes for logging.
+    """
+    # Create a mock serial instance
+    mock_serial = MagicMock()
+
+    # Create DebugSerial wrapper
+    debug_serial = DebugSerial(mock_serial, name="TEST")
+
+    # Simulate reading an exception response (non-empty)
+    exception_response = bytes.fromhex("04 83 02 d0 f0")
+    mock_serial.read.return_value = exception_response
+
+    # First read gets the exception response
+    data = debug_serial.read(5)
+    assert data == exception_response
+    tx, rx = debug_serial.get_last_tx_rx()
+    assert rx == exception_response
+
+    # Simulate a timeout read (empty response)
+    mock_serial.read.return_value = b""
+    data = debug_serial.read(5)
+    assert data == b""
+
+    # get_last_tx_rx should still return the last non-empty RX
+    tx, rx = debug_serial.get_last_tx_rx()
+    assert rx == exception_response, "Last non-empty RX should be preserved"
+    assert tx == b"", "TX should be empty (no writes yet)"
+
+    # Now simulate a write
+    request = bytes.fromhex("04 03 00 10 00 01 85 9a")
+    mock_serial.write.return_value = len(request)
+    debug_serial.write(request)
+
+    # Both TX and last non-empty RX should be available
+    tx, rx = debug_serial.get_last_tx_rx()
+    assert tx == request, "TX should contain the last write"
+    assert rx == exception_response, "Last non-empty RX should still be preserved"
