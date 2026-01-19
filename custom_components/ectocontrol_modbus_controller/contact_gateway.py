@@ -210,13 +210,16 @@ class ContactSensorGateway:
         reg_0x0010, reg_0x0011 = self.get_channel_bitfields()
 
         if channel <= 8:
-            # Channels 1-8 are in register 0x0010
+            # Channels 1-8 are in register 0x0010 MSB byte
             if reg_0x0010 is None:
                 return None
 
-            # Extract bit for this channel
+            # Extract MSB byte (contains channels 1-8 bitfield)
+            msb_byte = (reg_0x0010 >> 8) & 0xFF
+
+            # Extract bit for this channel from MSB byte
             bit_position = channel - 1  # Channel 1 = bit 0, Channel 8 = bit 7
-            is_closed = bool((reg_0x0010 >> bit_position) & 0x01)
+            is_closed = bool((msb_byte >> bit_position) & 0x01)
             return is_closed
         else:
             # Channels 9-10 are in register 0x0011
