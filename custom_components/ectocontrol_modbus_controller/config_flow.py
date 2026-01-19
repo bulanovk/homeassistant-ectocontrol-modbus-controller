@@ -121,9 +121,10 @@ class EctocontrolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Also add PTY devices for testing/emulation (scan /dev/pts/)
             if os.path.exists("/dev/pts"):
                 try:
+                    pty_list = await asyncio.to_thread(os.listdir, "/dev/pts")
                     pty_devices = [
                         os.path.join("/dev/pts", f)
-                        for f in os.listdir("/dev/pts")
+                        for f in pty_list
                         if f.isdigit()
                     ]
                     port_devices.extend(pty_devices)
@@ -261,9 +262,10 @@ class EctocontrolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Also add PTY devices for testing/emulation (scan /dev/pts/)
             if os.path.exists("/dev/pts"):
                 try:
+                    pty_list = await asyncio.to_thread(os.listdir, "/dev/pts")
                     pty_devices = [
                         os.path.join("/dev/pts", f)
-                        for f in os.listdir("/dev/pts")
+                        for f in pty_list
                         if f.isdigit()
                     ]
                     port_devices.extend(pty_devices)
