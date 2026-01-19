@@ -15,7 +15,8 @@ _LOGGER = logging.getLogger(__name__)
 async def create_device_gateway(
     protocol,
     slave_id: int,
-    debug_modbus: bool = False
+    debug_modbus: bool = False,
+    retry_count: int = 2
 ) -> Union["BoilerGateway", "ContactSensorGateway"]:
     """Detect device type and create appropriate gateway instance.
 
@@ -41,20 +42,19 @@ async def create_device_gateway(
         ValueError: If device info cannot be read or device type is not supported
     """
     # Try reading device info with retry for slow-to-respond devices
-    max_retries = 2
     regs = None
 
-    for attempt in range(max_retries):
+    for attempt in range(retry_count):
         regs = await protocol.read_registers(slave_id, 0x0000, 4)
 
         if regs is not None and len(regs) >= 4:
             break
 
-        if attempt < max_retries - 1:
+        if attempt < retry_count - 1:
             _LOGGER.warning(
                 "Device detection attempt %d/%d failed for slave_id=%s, retrying...",
                 attempt + 1,
-                max_retries,
+                retry_count,
                 slave_id
             )
             await asyncio.sleep(1)  # Wait 1 second before retry

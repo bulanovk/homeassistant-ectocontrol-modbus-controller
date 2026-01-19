@@ -83,7 +83,7 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
 
     # Create gateway using device router (detects device type automatically)
     try:
-        gateway = await create_device_gateway(protocol, slave, debug_modbus=debug_modbus)
+        gateway = await create_device_gateway(protocol, slave, debug_modbus=debug_modbus, retry_count=retry_count)
     except ValueError as err:
         _LOGGER.error("Failed to create device gateway for %s: %s", port, err)
         return False
