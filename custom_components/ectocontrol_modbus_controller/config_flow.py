@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from fnmatch import fnmatch
 from typing import Any
 
@@ -113,10 +114,27 @@ class EctocontrolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # List all available serial ports and filter by supported patterns
         try:
+            # Get physical serial ports
             all_ports = await asyncio.to_thread(serial.tools.list_ports.comports)
+            port_devices = [p.device for p in all_ports]
+
+            # Also add PTY devices for testing/emulation (scan /dev/pts/)
+            if os.path.exists("/dev/pts"):
+                try:
+                    pty_devices = [
+                        os.path.join("/dev/pts", f)
+                        for f in os.listdir("/dev/pts")
+                        if f.isdigit()
+                    ]
+                    port_devices.extend(pty_devices)
+                    _LOGGER.debug("Found %d PTY devices in /dev/pts", len(pty_devices))
+                except Exception as e:
+                    _LOGGER.warning("Failed to scan /dev/pts: %s", e)
+
+            # Filter by supported patterns
             self._ports = [
-                p.device for p in all_ports
-                if any(fnmatch(p.device, pattern) for pattern in SERIAL_PORT_PATTERNS)
+                p for p in port_devices
+                if any(fnmatch(p, pattern) for pattern in SERIAL_PORT_PATTERNS)
             ]
         except Exception as e:
             _LOGGER.error("Failed to list serial ports: %s", e)
@@ -236,10 +254,27 @@ class EctocontrolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial step where user provides port and slave id."""
         # List all available serial ports and filter by supported patterns
         try:
+            # Get physical serial ports
             all_ports = await asyncio.to_thread(serial.tools.list_ports.comports)
+            port_devices = [p.device for p in all_ports]
+
+            # Also add PTY devices for testing/emulation (scan /dev/pts/)
+            if os.path.exists("/dev/pts"):
+                try:
+                    pty_devices = [
+                        os.path.join("/dev/pts", f)
+                        for f in os.listdir("/dev/pts")
+                        if f.isdigit()
+                    ]
+                    port_devices.extend(pty_devices)
+                    _LOGGER.debug("Found %d PTY devices in /dev/pts", len(pty_devices))
+                except Exception as e:
+                    _LOGGER.warning("Failed to scan /dev/pts: %s", e)
+
+            # Filter by supported patterns
             self._ports = [
-                p.device for p in all_ports
-                if any(fnmatch(p.device, pattern) for pattern in SERIAL_PORT_PATTERNS)
+                p for p in port_devices
+                if any(fnmatch(p, pattern) for pattern in SERIAL_PORT_PATTERNS)
             ]
         except Exception as e:
             _LOGGER.error("Failed to list serial ports: %s", e)
