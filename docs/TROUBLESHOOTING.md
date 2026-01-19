@@ -82,15 +82,20 @@ Error: Modbus Error: Exception code = 2
 
 **Possible Causes:**
 
-1. **Slave ID mismatch** (most common with emulators)
+1. **Wrong Modbus function code** (common issue)
+   - Contact sensor data (registers 0x0010-0x0011) must be read using **INPUT registers** (function 0x04), not **HOLDING registers** (function 0x03)
+   - If you're implementing a custom emulator or device, ensure it supports function code 0x04 for these addresses
+   - The integration correctly uses `read_input_registers()` for contact sensor data
+
+2. **Slave ID mismatch** (most common with emulators)
    - Your emulator is configured for `slave_id=1`, but you entered `slave_id=4` in the config flow
    - The emulator receives the request but rejects it because the slave ID doesn't match
 
-2. **Wrong register address**
-   - The emulator doesn't implement register 0x0010
+3. **Wrong register address**
+   - The emulator doesn't implement register 0x0010 as an INPUT register
    - Check your emulator's register map
 
-3. **Emulator not running**
+4. **Emulator not running**
    - Verify the emulator process is active
    - Check socat PTY connections
 

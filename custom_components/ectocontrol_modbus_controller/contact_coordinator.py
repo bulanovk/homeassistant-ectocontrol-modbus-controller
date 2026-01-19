@@ -88,20 +88,21 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
 
         if channel_count <= 8:
             # Only need register 0x0010 (channels 1-8)
+            # NOTE: Contact sensor data is in INPUT registers, not holding registers
             _LOGGER.debug(
-                "Reading contact states for slave_id=%s: 1 register (0x0010, %d channels)",
+                "Reading contact states for slave_id=%s: 1 INPUT register (0x0010, %d channels)",
                 self.gateway.slave_id,
                 channel_count
             )
 
-            regs = await self.gateway.protocol.read_registers(
+            regs = await self.gateway.protocol.read_input_registers(
                 self.gateway.slave_id,
                 0x0010,
                 1
             )
 
             if regs is None or len(regs) == 0:
-                _LOGGER.error("Failed to read register 0x0010")
+                _LOGGER.error("Failed to read INPUT register 0x0010")
                 raise UpdateFailed("Failed to read contact states")
 
             # Update gateway cache
@@ -114,20 +115,21 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
             return cache_data
         else:
             # Need both registers (channels 9-10 present)
+            # NOTE: Contact sensor data is in INPUT registers, not holding registers
             _LOGGER.debug(
-                "Reading contact states for slave_id=%s: 2 registers (0x0010-0x0011, %d channels)",
+                "Reading contact states for slave_id=%s: 2 INPUT registers (0x0010-0x0011, %d channels)",
                 self.gateway.slave_id,
                 channel_count
             )
 
-            regs = await self.gateway.protocol.read_registers(
+            regs = await self.gateway.protocol.read_input_registers(
                 self.gateway.slave_id,
                 0x0010,
                 2
             )
 
             if regs is None or len(regs) < 2:
-                _LOGGER.error("Failed to read registers 0x0010-0x0011")
+                _LOGGER.error("Failed to read INPUT registers 0x0010-0x0011")
                 raise UpdateFailed("Failed to read contact states")
 
             # Update gateway cache

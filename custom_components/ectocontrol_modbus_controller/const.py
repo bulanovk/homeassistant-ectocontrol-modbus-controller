@@ -66,9 +66,10 @@ DEVICE_TYPE_NAMES = {
 
 # Contact Sensor Splitter Registers (Device Type 0x59)
 # Per Russian documentation MODBUS_PROTOCOL_RU.md section 3.2 "ДИСКРЕТНЫЕ ДАТЧИКИ"
+# IMPORTANT: These are INPUT registers (function code 0x04), not holding registers!
 # Bitfield registers for contact states (1-10 channels)
-REGISTER_CONTACT_CHANNELS_1_8 = 0x0010   # Channels 1-8 bitfield (bits 0-7)
-REGISTER_CONTACT_CHANNELS_9_10 = 0x0011  # Channels 9-10 bitfield (bits 0-2)
+REGISTER_CONTACT_CHANNELS_1_8 = 0x0010   # Channels 1-8 bitfield (bits 0-7) - INPUT register
+REGISTER_CONTACT_CHANNELS_9_10 = 0x0011  # Channels 9-10 bitfield (bits 0-2) - INPUT register
 
 # Adapter Type Codes from REGISTER_STATUS (0x0010 bits 0-2)
 # Per Russian documentation (MODBUS_PROTOCOL_RU.md) - more specific than English docs
