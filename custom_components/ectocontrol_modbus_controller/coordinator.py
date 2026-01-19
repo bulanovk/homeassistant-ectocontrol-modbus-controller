@@ -52,11 +52,13 @@ class BoilerDataUpdateCoordinator(DataUpdateCoordinator):
         retry_count: int = 3,
         read_timeout: float = MODBUS_READ_TIMEOUT,
         config_entry: Optional[Any] = None,
+        debug_modbus: bool = False,
     ):
         self.gateway = gateway
         self.name = name
         self.retry_count = retry_count
         self.read_timeout = read_timeout
+        self.debug_modbus = debug_modbus
         super().__init__(
             hass,
             _LOGGER,
@@ -98,14 +100,15 @@ class BoilerDataUpdateCoordinator(DataUpdateCoordinator):
                 # Update gateway cache
                 self.gateway.cache = data
 
-                # Debug log with register names
-                _LOGGER.debug(
-                    "Received data: %s",
-                    ", ".join(
-                        f"{_REGISTER_NAMES.get(addr, f'0x{addr:04X}')}=0x{val:04X}({val})"
-                        for addr, val in data.items()
+                # Debug log with register names (only if debug_modbus is enabled)
+                if self.debug_modbus:
+                    _LOGGER.debug(
+                        "Received data: %s",
+                        ", ".join(
+                            f"{_REGISTER_NAMES.get(addr, f'0x{addr:04X}')}=0x{val:04X}({val})"
+                            for addr, val in data.items()
+                        )
                     )
-                )
 
                 # Log retry recovery
                 if attempt > 0:

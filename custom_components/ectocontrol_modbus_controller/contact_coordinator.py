@@ -39,6 +39,7 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
         retry_count: int = MODBUS_RETRY_COUNT,
         read_timeout: float = MODBUS_READ_TIMEOUT,
         config_entry = None,
+        debug_modbus: bool = False,
     ):
         """Initialize the coordinator.
 
@@ -50,11 +51,13 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
             retry_count: Number of retry attempts (default 3)
             read_timeout: Modbus read timeout in seconds (default 3.0)
             config_entry: Config entry (optional)
+            debug_modbus: Enable debug logging (default False)
         """
         self.gateway = gateway
         self.retry_count = retry_count
         self.read_timeout = read_timeout
         self.config_entry = config_entry
+        self.debug_modbus = debug_modbus
 
         super().__init__(
             hass,
@@ -89,11 +92,12 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
         if channel_count <= 8:
             # Only need register 0x0010 (channels 1-8)
             # NOTE: Contact sensor data is in INPUT registers, not holding registers
-            _LOGGER.debug(
-                "Reading contact states for slave_id=%s: 1 INPUT register (0x0010, %d channels)",
-                self.gateway.slave_id,
-                channel_count
-            )
+            if self.debug_modbus:
+                _LOGGER.debug(
+                    "Reading contact states for slave_id=%s: 1 INPUT register (0x0010, %d channels)",
+                    self.gateway.slave_id,
+                    channel_count
+                )
 
             regs = await self.gateway.protocol.read_input_registers(
                 self.gateway.slave_id,
@@ -107,20 +111,22 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Update gateway cache
             self.gateway.cache = {0x0010: regs[0]}
-            _LOGGER.debug(
-                "Contact states for slave_id=%s: 0x0010=0x%04X",
-                self.gateway.slave_id,
-                regs[0]
-            )
+            if self.debug_modbus:
+                _LOGGER.debug(
+                    "Contact states for slave_id=%s: 0x0010=0x%04X",
+                    self.gateway.slave_id,
+                    regs[0]
+                )
             return self.gateway.cache
         else:
             # Need both registers (channels 9-10 present)
             # NOTE: Contact sensor data is in INPUT registers, not holding registers
-            _LOGGER.debug(
-                "Reading contact states for slave_id=%s: 2 INPUT registers (0x0010-0x0011, %d channels)",
-                self.gateway.slave_id,
-                channel_count
-            )
+            if self.debug_modbus:
+                _LOGGER.debug(
+                    "Reading contact states for slave_id=%s: 2 INPUT registers (0x0010-0x0011, %d channels)",
+                    self.gateway.slave_id,
+                    channel_count
+                )
 
             regs = await self.gateway.protocol.read_input_registers(
                 self.gateway.slave_id,
@@ -134,12 +140,13 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Update gateway cache
             self.gateway.cache = {0x0010: regs[0], 0x0011: regs[1]}
-            _LOGGER.debug(
-                "Contact states for slave_id=%s: 0x0010=0x%04X, 0x0011=0x%04X",
-                self.gateway.slave_id,
-                regs[0],
-                regs[1]
-            )
+            if self.debug_modbus:
+                _LOGGER.debug(
+                    "Contact states for slave_id=%s: 0x0010=0x%04X, 0x0011=0x%04X",
+                    self.gateway.slave_id,
+                    regs[0],
+                    regs[1]
+                )
             return self.gateway.cache
 
     def is_channel_available(self, channel: int) -> bool:

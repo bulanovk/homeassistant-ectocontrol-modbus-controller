@@ -101,6 +101,7 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
             retry_count=retry_count,
             read_timeout=read_timeout,
             config_entry=entry,
+            debug_modbus=debug_modbus,
         )
     elif isinstance(gateway, ContactSensorGateway):
         coordinator = ContactSensorDataUpdateCoordinator(
@@ -111,6 +112,7 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
             retry_count=retry_count,
             read_timeout=read_timeout,
             config_entry=entry,
+            debug_modbus=debug_modbus,
         )
     else:
         _LOGGER.error("Unsupported gateway type for slave_id=%s", slave)
