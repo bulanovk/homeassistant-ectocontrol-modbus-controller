@@ -152,22 +152,6 @@ class ContactSensorGateway:
             f"Unknown (0x{self.device_type:02X})"
         )
 
-    def get_manufacturer_code(self) -> Optional[int]:
-        """Return manufacturer code (not applicable for contact sensors).
-
-        Contact sensor devices don't have a manufacturer code like boiler adapters.
-        This method returns None for consistency with the boiler gateway interface.
-        """
-        return None
-
-    def get_model_code(self) -> Optional[int]:
-        """Return model code (not applicable for contact sensors).
-
-        Contact sensor devices don't have a model code like boiler adapters.
-        This method returns None for consistency with the boiler gateway interface.
-        """
-        return None
-
     # ---------- BITFIELD ACCESS ----------
 
     def get_channel_bitfields(self) -> tuple[Optional[int], Optional[int]]:

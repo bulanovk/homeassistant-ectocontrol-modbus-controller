@@ -180,20 +180,43 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
         # don't block setup on initial failure; coordinator will retry
         pass
 
-    # Update device info with actual data from gateway (from coordinator poll)
-    manufacturer_code = gateway.get_manufacturer_code()
-    model_code = gateway.get_model_code()
-    hw_version = gateway.get_hw_version()
-    sw_version = gateway.get_sw_version()
+    # Create device info model based on gateway type
+    from .boiler_gateway import BoilerGateway
+    from .contact_gateway import ContactSensorGateway
 
-    # Map codes to readable names
-    manufacturer_name = "Ectocontrol"
-    if manufacturer_code is not None:
-        manufacturer_name = str(manufacturer_code)
+    if isinstance(gateway, BoilerGateway):
+        # Boiler adapter device info
+        manufacturer_code = gateway.get_manufacturer_code()
+        model_code = gateway.get_model_code()
+        hw_version = gateway.get_hw_version()
+        sw_version = gateway.get_sw_version()
 
-    # Update model name with code if available
-    if model_code is not None:
-        model_name = str(model_code)
+        # Map codes to readable names
+        manufacturer_name = "Ectocontrol"
+        if manufacturer_code is not None:
+            manufacturer_name = str(manufacturer_code)
+
+        model_name = "OpenTherm Adapter v2"
+        if model_code is not None:
+            model_name = f"OpenTherm Adapter v2 (model {model_code})"
+
+    elif isinstance(gateway, ContactSensorGateway):
+        # Contact sensor device info
+        manufacturer_name = "Ectocontrol"
+        model_name = gateway.get_device_type_name() or "Contact Sensor Splitter"
+        hw_version = None
+        sw_version = None
+        manufacturer_code = None
+        model_code = None
+
+    else:
+        _LOGGER.warning("Unknown gateway type, using default device info")
+        manufacturer_name = "Ectocontrol"
+        model_name = "Unknown Device"
+        hw_version = None
+        sw_version = None
+        manufacturer_code = None
+        model_code = None
 
     # Update device info but preserve the custom device name that includes port
     device_registry.async_update_device(
@@ -208,9 +231,6 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
 
     # Forward entry setups for platforms based on device type
     try:
-        from .boiler_gateway import BoilerGateway
-        from .contact_gateway import ContactSensorGateway
-
         if isinstance(gateway, BoilerGateway):
             # Boiler adapters: forward all platforms
             platforms = ["sensor", "switch", "number", "binary_sensor", "climate", "button"]
