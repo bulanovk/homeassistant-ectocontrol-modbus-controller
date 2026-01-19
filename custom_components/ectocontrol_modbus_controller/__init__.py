@@ -104,6 +104,11 @@ async def async_setup_entry(hass: HomeAssistant, entry) -> bool:
             debug_modbus=debug_modbus,
         )
     elif isinstance(gateway, ContactSensorGateway):
+        _LOGGER.info(
+            "Creating ContactSensorDataUpdateCoordinator for slave_id=%s with debug_modbus=%s",
+            slave,
+            debug_modbus
+        )
         coordinator = ContactSensorDataUpdateCoordinator(
             hass,
             gateway,
