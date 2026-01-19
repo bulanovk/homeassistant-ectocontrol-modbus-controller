@@ -48,44 +48,51 @@ class TestContactSensorGatewayDeviceInfo:
     async def test_read_device_info_success_10ch(self, fake_protocol, fake_gateway):
         """Test successful device info read for 10-channel device."""
         # Simulate device info response
+        # Per Russian documentation: UID is in bytes 1-3 (LSB to MSB order)
+        # UID byte 1 (LSB) = register 0x0000 LSB
+        # UID byte 2 (middle) = register 0x0001 MSB
+        # UID byte 3 (MSB) = register 0x0001 LSB
+        # Example: UID = 0x8ABCDE → reg[0x0000]=0x00DE, reg[0x0001]=0xABCD
         fake_protocol.read_values[(1, 0x0000, 4)] = [
-            0x0000,  # Reserved
-            0x8ABC,  # UID high 16 bits (will be shifted left)
-            0xDE00,  # UID low 8 bits (0xDE in MSB)
+            0x00DE,  # RSVD (0x00) + UID byte 1 LSB (0xDE)
+            0xABCD,  # UID byte 3 MSB (0xAB) + UID byte 2 (0xCD)
+            0x0000,  # Not used for UID
             0x590A,  # Device type 0x59, channel count 0x0A (10)
         ]
 
         result = await fake_gateway.read_device_info()
 
         assert result is True
-        assert fake_gateway.device_uid == 0x8ABCDE  # (0x8ABC << 8) | 0xDE
+        assert fake_gateway.device_uid == 0x8ABCDE  # Correct UID parsing
         assert fake_gateway.device_type == 0x59
         assert fake_gateway.channel_count == 10
 
     @pytest.mark.asyncio
     async def test_read_device_info_success_4ch(self, fake_protocol, fake_gateway):
         """Test successful device info read for 4-channel device."""
+        # UID = 0x812345 → reg[0x0000]=0x0045, reg[0x0001]=0x8123
         fake_protocol.read_values[(1, 0x0000, 4)] = [
-            0x0000,  # Reserved
-            0x8123,  # UID high 16 bits (must be >= 0x8000)
-            0x4500,  # UID low 8 bits (0x45 in MSB)
+            0x0045,  # RSVD (0x00) + UID byte 1 LSB (0x45)
+            0x8123,  # UID byte 3 MSB (0x81) + UID byte 2 (0x23)
+            0x0000,  # Not used for UID
             0x5904,  # Device type 0x59, channel count 0x04
         ]
 
         result = await fake_gateway.read_device_info()
 
         assert result is True
-        assert fake_gateway.device_uid == 0x812345  # (0x8123 << 8) | 0x45
+        assert fake_gateway.device_uid == 0x812345  # Correct UID parsing
         assert fake_gateway.device_type == 0x59
         assert fake_gateway.channel_count == 4
 
     @pytest.mark.asyncio
     async def test_read_device_info_invalid_uid(self, fake_protocol, fake_gateway):
         """Test device info read with invalid UID."""
+        # UID = 0x007FFF → below 0x800000 (invalid)
         fake_protocol.read_values[(1, 0x0000, 4)] = [
-            0x0000,  # Reserved
-            0x7FFF,  # UID high (invalid, below 0x800000)
-            0x0000,  # UID low
+            0x00FF,  # RSVD (0x00) + UID byte 1 LSB (0xFF)
+            0x007F,  # UID byte 3 MSB (0x00) + UID byte 2 (0x7F)
+            0x0000,  # Not used for UID
             0x5904,  # Device type 0x59, channel count 4
         ]
 

@@ -344,10 +344,20 @@ class EctocontrolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
 
                 # Extract device type and UID
+                # UID is 3 bytes spanning registers 0x0000 (LSB), 0x0001 (middle+MSB)
+                # Per Russian documentation table:
+                #   Byte 0 (RSVD), Bytes 1-3 (UID), Byte 4 (RSVD), Bytes 5-7 (ADDR, TYPE, CHN_CNT)
+                # UID byte 1 (LSB) = register 0x0000 LSB
+                # UID byte 2 (middle) = register 0x0001 MSB
+                # UID byte 3 (MSB) = register 0x0001 LSB
                 device_type = (regs[3] >> 8) & 0xFF
-                uid_high = regs[1]
-                uid_low = (regs[2] >> 8) & 0xFF
-                device_uid = (uid_high << 8) | uid_low
+                
+                uid_byte_lsb = regs[0] & 0xFF  # Register 0x0000 LSB
+                uid_byte_mid = (regs[1] >> 8) & 0xFF  # Register 0x0001 MSB
+                uid_byte_msb = regs[1] & 0xFF  # Register 0x0001 LSB
+                
+                # Combine: MSB << 16 | middle << 8 | LSB
+                device_uid = (uid_byte_msb << 16) | (uid_byte_mid << 8) | uid_byte_lsb
 
                 # Validate UID range (must be 0x800000-0xFFFFFF for Ectocontrol devices)
                 if device_uid < 0x800000 or device_uid > 0xFFFFFF:

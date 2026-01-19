@@ -65,11 +65,16 @@ class ContactSensorGateway:
             )
             return False
 
-        # Extract UID: 24-bit value from registers 0x0001 and 0x0002
-        # UID is stored as: reg[0x0001] (16 bits) + reg[0x0002] MSB (8 bits)
-        uid_high = regs[1]  # 16 bits
-        uid_low = (regs[2] >> 8) & 0xFF  # Upper 8 bits of reg[2]
-        self.device_uid = (uid_high << 8) | uid_low
+        # Extract UID: 24-bit value from registers 0x0000-0x0002
+        # Per Russian documentation MODBUS_PROTOCOL_RU.md:
+        #   Byte 0 (RSVD), Bytes 1-3 (UID), Byte 4 (RSVD), Bytes 5-7 (ADDR, TYPE, CHN_CNT)
+        # UID byte 1 (LSB) = register 0x0000 LSB
+        # UID byte 2 (middle) = register 0x0001 MSB
+        # UID byte 3 (MSB) = register 0x0001 LSB
+        uid_byte_lsb = regs[0] & 0xFF  # Register 0x0000 LSB
+        uid_byte_mid = (regs[1] >> 8) & 0xFF  # Register 0x0001 MSB
+        uid_byte_msb = regs[1] & 0xFF  # Register 0x0001 LSB
+        self.device_uid = (uid_byte_msb << 16) | (uid_byte_mid << 8) | uid_byte_lsb
 
         # Validate UID range
         if self.device_uid < 0x800000 or self.device_uid > 0xFFFFFF:

@@ -59,10 +59,18 @@ class ModbusSlaveSimulator:
     def _init_registers(self) -> None:
         """Initialize register map with default values for OpenTherm Adapter v2."""
         # Generic device info (0x0000-0x0003)
+        # Per Russian documentation MODBUS_PROTOCOL_RU.md:
+        #   Byte 0 (RSVD), Bytes 1-3 (UID), Byte 4 (RSVD), Bytes 5-7 (ADDR, TYPE, CHN_CNT)
+        # UID byte 1 (LSB) = register 0x0000 LSB
+        # UID byte 2 (middle) = register 0x0001 MSB
+        # UID byte 3 (MSB) = register 0x0001 LSB
+        # Example: UID = 0x8ABCDEF → bytes are 0xEF, 0xCD, 0xAB
+        # Register 0x0000 = 0x00EF (RSVD=0x00, UID byte1=0xEF)
+        # Register 0x0001 = 0xABCD (UID byte3=0xAB, byte2=0xCD)
         self.registers = {
-            0x0000: 0x0000,  # Reserved
-            0x0001: 0x8ABC,  # UID high 16 bits
-            0x0002: 0xDE00,  # UID low 8 bits in MSB
+            0x0000: 0x00EF,  # RSVD (0x00) + UID byte 1 LSB (0xEF)
+            0x0001: 0xABCD,  # UID byte 3 MSB (0xAB) + UID byte 2 (0xCD)
+            0x0002: 0xDE00,  # UID byte 4 (not used per docs) + RSVD
             0x0003: (self.device_type << 8) | 0x04,  # Device type + channel count
         }
 
