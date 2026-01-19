@@ -106,13 +106,13 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed("Failed to read contact states")
 
             # Update gateway cache
-            cache_data = {0x0010: regs[0]}
+            self.gateway.cache = {0x0010: regs[0]}
             _LOGGER.debug(
                 "Contact states for slave_id=%s: 0x0010=0x%04X",
                 self.gateway.slave_id,
                 regs[0]
             )
-            return cache_data
+            return self.gateway.cache
         else:
             # Need both registers (channels 9-10 present)
             # NOTE: Contact sensor data is in INPUT registers, not holding registers
@@ -133,14 +133,14 @@ class ContactSensorDataUpdateCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed("Failed to read contact states")
 
             # Update gateway cache
-            cache_data = {0x0010: regs[0], 0x0011: regs[1]}
+            self.gateway.cache = {0x0010: regs[0], 0x0011: regs[1]}
             _LOGGER.debug(
                 "Contact states for slave_id=%s: 0x0010=0x%04X, 0x0011=0x%04X",
                 self.gateway.slave_id,
                 regs[0],
                 regs[1]
             )
-            return cache_data
+            return self.gateway.cache
 
     def is_channel_available(self, channel: int) -> bool:
         """Check if a channel has valid data available.
