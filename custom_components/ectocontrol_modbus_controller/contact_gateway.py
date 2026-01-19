@@ -212,7 +212,6 @@ class ContactSensorGateway:
         if channel <= 8:
             # Channels 1-8 are in register 0x0010
             if reg_0x0010 is None:
-                _LOGGER.debug("Register 0x0010 not in cache")
                 return None
 
             # Extract bit for this channel
@@ -222,7 +221,6 @@ class ContactSensorGateway:
         else:
             # Channels 9-10 are in register 0x0011
             if reg_0x0011 is None:
-                _LOGGER.debug("Register 0x0011 not in cache")
                 return None
 
             # Extract bit for this channel

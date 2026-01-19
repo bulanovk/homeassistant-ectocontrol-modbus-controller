@@ -141,7 +141,7 @@ class ModbusProtocol:
     def _get_last_tx_rx(self) -> tuple[bytes, bytes]:
         """Get last TX/RX bytes if debug mode is enabled."""
         if self._debug_serial:
-            return self._debug_serial.get_last_tx_rx()  
+            return self._debug_serial.get_last_tx_rx()
         return b"", b""
 
     def _connect_sync(self):

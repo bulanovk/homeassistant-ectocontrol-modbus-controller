@@ -186,11 +186,9 @@ class BoilerGateway:
         """Get adapter uptime in seconds from registers 0x0012 (high) and 0x0013 (low)."""
         high = self._get_reg(REGISTER_UPTIME)
         if high is None:
-            _LOGGER.debug("Uptime register 0x0012 not in cache")
             return None
         low = self._get_reg(0x0013)
         if low is None:
-            _LOGGER.debug("Uptime register 0x0013 not in cache")
             return None
         # Combine 32-bit value: high word at 0x0012, low word at 0x0013
         uptime_seconds = (high << 16) | low
