@@ -309,7 +309,7 @@ class EctocontrolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 existing_slaves_on_port,
             )
 
-        # Attempt connection and basic read
+        # Attempt connection and device detection
         try:
             debug_modbus = user_input.get(CONF_DEBUG_MODBUS, False)
             polling_interval = user_input.get(
@@ -330,17 +330,53 @@ class EctocontrolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
             try:
-                regs = await protocol.read_registers(slave, 0x0010, 1, timeout=read_timeout)
+                # Read generic device info registers (0x0000-0x0003) to detect device type
+                # This is required to determine which register map to use
+                regs = await protocol.read_registers(slave, 0x0000, 4, timeout=read_timeout)
+
+                if regs is None or len(regs) < 4:
+                    _LOGGER.error("Failed to read device info registers (0x0000-0x0003) for slave_id=%s", slave)
+                    self._errors["base"] = "cannot_connect"
+                    return self.async_show_form(
+                        step_id="user",
+                        data_schema=self._build_schema(user_input),
+                        errors=self._errors,
+                    )
+
+                # Extract device type and UID
+                device_type = (regs[3] >> 8) & 0xFF
+                uid_high = regs[1]
+                uid_low = (regs[2] >> 8) & 0xFF
+                device_uid = (uid_high << 8) | uid_low
+
+                # Validate UID range (must be 0x800000-0xFFFFFF for Ectocontrol devices)
+                if device_uid < 0x800000 or device_uid > 0xFFFFFF:
+                    _LOGGER.error(
+                        "Invalid UID 0x%06X for slave_id=%s (must be 0x800000-0xFFFFFF)",
+                        device_uid,
+                        slave
+                    )
+                    self._errors["base"] = "invalid_uid"
+                    return self.async_show_form(
+                        step_id="user",
+                        data_schema=self._build_schema(user_input),
+                        errors=self._errors,
+                    )
+
+                # Log detected device info
+                from . import const
+                device_type_name = const.DEVICE_TYPE_NAMES.get(device_type, f"Unknown (0x{device_type:02X})")
+                _LOGGER.info(
+                    "Device detected for slave_id=%s: UID=0x%06X, type=0x%02X (%s)",
+                    slave,
+                    device_uid,
+                    device_type,
+                    device_type_name
+                )
+
             finally:
                 await protocol.disconnect()
 
-            if regs is None:
-                self._errors["base"] = "cannot_connect"
-                return self.async_show_form(
-                    step_id="user",
-                    data_schema=self._build_schema(user_input),
-                    errors=self._errors,
-                )
         except Exception as e:
             _LOGGER.error("Connection test failed: %s", e)
             self._errors["base"] = "cannot_connect"

@@ -71,7 +71,17 @@ class FakeProtocolOK:
         return True
 
     async def read_registers(self, slave: int, addr: int, count: int, timeout: float | None = None):
-        return [0]
+        # Return appropriate fake data based on address
+        if addr == 0x0000 and count == 4:
+            # Generic device info registers (0x0000-0x0003)
+            # Return valid data for OpenTherm Adapter v2 with valid UID
+            return [
+                0x0000,  # REGISTER_RESERVED
+                0x8ABC,  # UID high 16 bits
+                0xDE00,  # UID low 8 bits in MSB
+                0x1404,  # Device type 0x14 (OpenTherm v2), 4 channels
+            ]
+        return [0] * count  # Default: return count zeros
 
     async def disconnect(self):
         return None
