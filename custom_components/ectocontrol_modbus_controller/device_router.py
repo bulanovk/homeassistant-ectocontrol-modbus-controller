@@ -11,7 +11,11 @@ from typing import Union
 _LOGGER = logging.getLogger(__name__)
 
 
-async def create_device_gateway(protocol, slave_id: int) -> Union["BoilerGateway", "ContactSensorGateway"]:
+async def create_device_gateway(
+    protocol,
+    slave_id: int,
+    debug_modbus: bool = False
+) -> Union["BoilerGateway", "ContactSensorGateway"]:
     """Detect device type and create appropriate gateway instance.
 
     This function reads the generic device information from registers 0x0000-0x0003
@@ -61,14 +65,14 @@ async def create_device_gateway(protocol, slave_id: int) -> Union["BoilerGateway
         # Contact Sensor Splitter
         from .contact_gateway import ContactSensorGateway
 
-        gateway = ContactSensorGateway(protocol, slave_id)
+        gateway = ContactSensorGateway(protocol, slave_id, debug_modbus=debug_modbus)
         _LOGGER.info("Creating ContactSensorGateway for slave_id=%s", slave_id)
 
     elif device_type in [0x14, 0x15, 0x16]:
         # Boiler adapters (OpenTherm v2, eBus, Navien)
         from .boiler_gateway import BoilerGateway
 
-        gateway = BoilerGateway(protocol, slave_id)
+        gateway = BoilerGateway(protocol, slave_id, debug_modbus=debug_modbus)
         _LOGGER.info("Creating BoilerGateway for slave_id=%s (device type=0x%02X)", slave_id, device_type)
 
     else:

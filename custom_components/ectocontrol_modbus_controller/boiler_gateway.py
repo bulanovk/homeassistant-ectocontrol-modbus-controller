@@ -57,9 +57,17 @@ class BoilerGateway:
     are raw 16-bit register integers as returned by `modbus-tk`.
     """
 
-    def __init__(self, protocol, slave_id: int):
+    def __init__(self, protocol, slave_id: int, debug_modbus: bool = False):
+        """Initialize the BoilerGateway.
+
+        Args:
+            protocol: ModbusProtocol instance for communication
+            slave_id: Modbus slave ID (1-32)
+            debug_modbus: Enable debug logging (default False)
+        """
         self.protocol = protocol
         self.slave_id = slave_id
+        self.debug_modbus = debug_modbus
         self.cache: Dict[int, int] = {}
 
         # Generic device info (populated by read_device_info())
@@ -468,11 +476,12 @@ class BoilerGateway:
             return None
         adapter_type = (raw >> 0) & 0x07  # bits 0-2
 
-        # Log for debugging
-        _LOGGER.debug(
-            "REGISTER_STATUS (0x0010) raw=0x%04X, adapter_type=0x%02X (%s)",
-            raw, adapter_type, self._get_adapter_type_name_from_code(adapter_type)
-        )
+        # Log for debugging (only if debug_modbus is enabled)
+        if self.debug_modbus:
+            _LOGGER.debug(
+                "REGISTER_STATUS (0x0010) raw=0x%04X, adapter_type=0x%02X (%s)",
+                raw, adapter_type, self._get_adapter_type_name_from_code(adapter_type)
+            )
 
         return adapter_type
 
@@ -509,13 +518,14 @@ class BoilerGateway:
         # Extract bit 3
         comm_bit = (raw >> 3) & 0x01
 
-        # Log connection status
-        _LOGGER.debug(
-            "REGISTER_STATUS (0x0010) raw=0x%04X, comm_bit=0x%X (%s)",
-            raw,
-            comm_bit,
-            "Connected" if comm_bit == 1 else "Not responding"
-        )
+        # Log connection status (only if debug_modbus is enabled)
+        if self.debug_modbus:
+            _LOGGER.debug(
+                "REGISTER_STATUS (0x0010) raw=0x%04X, comm_bit=0x%X (%s)",
+                raw,
+                comm_bit,
+                "Connected" if comm_bit == 1 else "Not responding"
+            )
 
         # Russian docs (verified correct): bit 3 = 1 means response received (connected)
         return bool(comm_bit)

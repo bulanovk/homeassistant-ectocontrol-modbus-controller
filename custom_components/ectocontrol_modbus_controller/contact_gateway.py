@@ -29,15 +29,17 @@ class ContactSensorGateway:
     Channel count is dynamically read from the device (1-10 channels supported).
     """
 
-    def __init__(self, protocol, slave_id: int):
+    def __init__(self, protocol, slave_id: int, debug_modbus: bool = False):
         """Initialize the Contact Sensor Gateway.
 
         Args:
             protocol: ModbusProtocol instance for communication
             slave_id: Modbus slave ID (1-32)
+            debug_modbus: Enable debug logging (default False)
         """
         self.protocol = protocol
         self.slave_id = slave_id
+        self.debug_modbus = debug_modbus
         self.cache: Dict[int, int] = {}
 
         # Generic device info (populated by read_device_info)
