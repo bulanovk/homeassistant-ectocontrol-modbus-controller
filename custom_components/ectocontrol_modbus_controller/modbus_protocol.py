@@ -154,7 +154,9 @@ class ModbusProtocol:
             timeout=self.timeout,
         )
         if self.debug_modbus:
-            self._debug_serial = DebugSerial(ser, name=f"MODBUS_{self.port}")
+            # Extract base port name for logger (e.g., "pts2" from "/dev/pts/2")
+            port_name = self.port.replace("/", "_").strip("_")
+            self._debug_serial = DebugSerial(ser, name=f"MODBUS_{port_name}")
             ser = self._debug_serial
             _LOGGER.info("Modbus debug logging enabled for %s", self.port)
         master = modbus_rtu.RtuMaster(ser)
