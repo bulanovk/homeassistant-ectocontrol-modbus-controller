@@ -78,6 +78,16 @@ class BoilerGateway:
         # Shared cache for CH setpoint to keep climate and number entities in sync
         self._ch_setpoint_cache: Optional[float] = None
 
+    def _debug_log(self, msg: str, *args):
+        """Log debug message only if debug_modbus is enabled.
+
+        Args:
+            msg: Log message format string
+            *args: Arguments for format string
+        """
+        if self.debug_modbus:
+            _LOGGER.debug(msg, *args)
+
     # ---------- GENERIC DEVICE INFO (read once at setup) ----------
 
     async def read_device_info(self) -> bool:

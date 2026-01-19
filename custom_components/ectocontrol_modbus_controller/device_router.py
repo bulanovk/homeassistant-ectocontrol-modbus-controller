@@ -5,6 +5,7 @@ gateway class based on the device type read from the generic device information.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Union
 
@@ -39,8 +40,24 @@ async def create_device_gateway(
     Raises:
         ValueError: If device info cannot be read or device type is not supported
     """
-    # Read generic device info registers (0x0000-0x0003)
-    regs = await protocol.read_registers(slave_id, 0x0000, 4)
+    # Try reading device info with retry for slow-to-respond devices
+    max_retries = 2
+    regs = None
+
+    for attempt in range(max_retries):
+        regs = await protocol.read_registers(slave_id, 0x0000, 4)
+
+        if regs is not None and len(regs) >= 4:
+            break
+
+        if attempt < max_retries - 1:
+            _LOGGER.warning(
+                "Device detection attempt %d/%d failed for slave_id=%s, retrying...",
+                attempt + 1,
+                max_retries,
+                slave_id
+            )
+            await asyncio.sleep(1)  # Wait 1 second before retry
 
     if regs is None or len(regs) < 4:
         _LOGGER.error("Failed to read device info registers for slave_id=%s", slave_id)
